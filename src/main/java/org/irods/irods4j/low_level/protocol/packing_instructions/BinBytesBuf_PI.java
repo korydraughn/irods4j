@@ -1,4 +1,4 @@
-package protocol;
+package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

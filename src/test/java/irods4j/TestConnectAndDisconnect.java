@@ -8,22 +8,31 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.HashMap;
 
+import org.irods.irods4j.low_level.network.Network;
+import org.irods.irods4j.low_level.protocol.packing_instructions.BinBytesBuf_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.StartupPack_PI;
+import org.irods.irods4j.low_level.util.NullSerializer;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-
-import network.Network;
-import protocol.BinBytesBuf_PI;
-import protocol.MsgHeader_PI;
-import protocol.StartupPack_PI;
+import com.fasterxml.jackson.dataformat.xml.ser.XmlSerializerProvider;
+import com.fasterxml.jackson.dataformat.xml.util.XmlRootNameLookup;
 
 class TestConnectAndDisconnect {
 
 	@Test
 	void test() throws UnknownHostException, IOException, InterruptedException, NoSuchAlgorithmException {
+		var provider = new XmlSerializerProvider(new XmlRootNameLookup());
+		provider.setNullValueSerializer(new NullSerializer());
+
 		var xm = new XmlMapper();
+		xm.setSerializerProvider(provider);
+
 		var socket = new Socket("localhost", 1247);
 
 		try {
@@ -155,7 +164,70 @@ class TestConnectAndDisconnect {
 				return;
 			}
 
+			bbbuf = Network.readBinBytesBuf_PI(socket, mh.msgLen);
+			System.out.println("received BinBytesBuf_PI: " + xm.writeValueAsString(bbbuf));
+			System.out.println("BinBytesBuf_PI contents: " + bbbuf.decode());
+
 			System.out.println("Authentication Successful!");
+
+			// ---------------
+			// ENTER MAIN LOOP
+
+			// Stat the home collection.
+			var doi = new DataObjInp_PI();
+			doi.objPath = "/tempZone/home/kory";
+			msgbody = xm.writeValueAsString(doi);
+
+			// Create the header describing the message.
+			hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
+			hdr.msgLen = msgbody.length();
+			hdr.intInfo = 633; // OBJ_STAT_AN
+
+			// Send the message header and DataObjInp (i.e. the message body).
+			Network.send(socket, hdr);
+			Network.sendXml(socket, doi);
+
+			// Read the message header from the server.
+			mh = Network.readMsgHeader_PI(socket);
+			System.out.println("received MsgHeader_PI: " + xm.writeValueAsString(mh));
+
+			if (mh.intInfo < 0) {
+				System.out.println("Error reading MsgHeader_PI from socket: " + mh.intInfo);
+				return;
+			}
+
+			var stat = Network.readRodsObjStat_PI(socket, mh.msgLen);
+			System.out.println("received RodsObjStat_PI: " + xm.writeValueAsString(stat));
+
+			// Execute GenQuery2 query.
+			var gq2i = new Genquery2Input_PI();
+			gq2i.query_string = "select COLL_NAME, DATA_NAME where COLL_NAME = '/tempZone/home/kory'";
+			gq2i.zone = "tempZone";
+			msgbody = xm.writeValueAsString(gq2i);
+
+			// Create the header describing the message.
+			hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
+			hdr.msgLen = msgbody.length();
+			hdr.intInfo = 10221; // GENQUERY2_AN
+
+			// Send the message header and Genquery2Input (i.e. the message body).
+			Network.send(socket, hdr);
+			Network.sendXml(socket, gq2i);
+
+			// Read the message header from the server.
+			mh = Network.readMsgHeader_PI(socket);
+			System.out.println("received MsgHeader_PI: " + xm.writeValueAsString(mh));
+
+			if (mh.intInfo < 0) {
+				System.out.println("Error reading MsgHeader_PI from socket: " + mh.intInfo);
+				return;
+			}
+
+			var queryResults = Network.readSTR_PI(socket, mh.msgLen);
+			System.out.println("received STR_PI: " + xm.writeValueAsString(queryResults));
+			System.out.println("query results: " + queryResults.myStr);
+
+			// ---------------
 
 			hdr.type = MsgHeader_PI.MsgType.RODS_DISCONNECT;
 			hdr.msgLen = 0;

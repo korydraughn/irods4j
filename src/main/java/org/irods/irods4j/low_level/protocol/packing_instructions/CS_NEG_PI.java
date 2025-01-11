@@ -1,4 +1,4 @@
-package protocol;
+package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
