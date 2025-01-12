@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import org.irods.irods4j.low_level.protocol.packing_instructions.BinBytesBuf_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.BytesBuf_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CS_NEG_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
@@ -13,6 +14,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.STR_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Version_PI;
 import org.irods.irods4j.low_level.util.NullSerializer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.xml.ser.XmlSerializerProvider;
@@ -105,11 +107,26 @@ public class Network {
 		return xm.readValue(bytes, STR_PI.class);
 	}
 
-//	public static <T> void readObject(Socket socket, int size, T object) throws IOException {
-//		var in = socket.getInputStream();
-//		var bytes = in.readNBytes(size);
-//		var xm = new XmlMapper();
-//		object.set(xm.readValue(bytes, T));
-//	}
+	public static BytesBuf_PI readBytesBuf_PI(Socket socket, int size) throws IOException {
+		var in = socket.getInputStream();
+		var bytes = in.readNBytes(size);
+		var xm = new XmlMapper();
+		return xm.readValue(bytes, BytesBuf_PI.class);
+	}
+
+	public static byte[] readBytes(Socket socket, int size) throws IOException {
+		return socket.getInputStream().readNBytes(size);
+	}
+
+	public static void sendBytes(Socket socket, byte[] bytes) throws IOException {
+		socket.getOutputStream().write(bytes);
+	}
+
+	public static <T> T readObject(Socket socket, int size) throws IOException {
+		var in = socket.getInputStream();
+		var bytes = in.readNBytes(size);
+		var xm = new XmlMapper();
+		return xm.readValue(bytes, new TypeReference<T>() {});
+	}
 
 }
