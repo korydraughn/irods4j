@@ -2,7 +2,7 @@ package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 public class DataObjInp_PI {
 
-	public static class PosixOpenFlags {
+	public static class OpenFlags {
 		// Access Mode
 		public static final int O_RDONLY = 0;
 		public static final int O_WRONLY = 1;
@@ -23,8 +23,8 @@ public class DataObjInp_PI {
 	public int numThreads;
 	public int oprType;
 	// TODO Causes operations to fail unless handled using a custom serialization
-	// method.
-	// Will deal with this later.
+	// method. Will deal with this later. Maybe I'll just not provide support for
+	// special collections in this library. We want to get rid of them anyway.
 //	public SpecColl_PI SpecColl_PI;
 	public KeyValPair_PI KeyValPair_PI;
 

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 public class StartupPack_PI {
 	
-	public int irodsProt = 1;
+	public int irodsProt = 1; // Use XML-based packing instruction format.
 	public int reconnFlag = 0;
 	public int connectCnt = 0;
 
