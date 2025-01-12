@@ -364,8 +364,7 @@ class TestConnectAndDisconnect {
 				openInput.createMode = 0600;
 				openInput.openFlags = PosixOpenFlags.O_RDONLY;
 				openInput.KeyValPair_PI = new KeyValPair_PI();
-				openInput.KeyValPair_PI.keyWord = new ArrayList<>();
-				openInput.KeyValPair_PI.svalue = new ArrayList<>();
+				openInput.KeyValPair_PI.ssLen = 0;
 				msgbody = xm.writeValueAsString(openInput);
 
 				// Create the header describing the message.
