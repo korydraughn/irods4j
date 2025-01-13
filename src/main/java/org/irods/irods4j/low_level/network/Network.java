@@ -29,7 +29,7 @@ public class Network {
 
 		if (log.isDebugEnabled()) {
 			log.debug("Wrote {} bytes", msg.length());
-			log.debug("Wrote {}", msg.getBytes());
+			log.debug("Message:\n{}", msg);
 		}
 	}
 

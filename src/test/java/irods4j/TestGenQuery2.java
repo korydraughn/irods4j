@@ -1,15 +1,18 @@
 package irods4j;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
-import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.api.API;
+import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -44,17 +47,22 @@ class TestGenQuery2 {
 		var username = "rods";
 		var password = "rods";
 		
-		var comm = assertDoesNotThrow(() -> API.rcConnect(host, port, zone, username));
+		RcComm comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, zone, username));
 		assertNotNull(comm);
-		assertDoesNotThrow(() -> API.authenticate(comm, "native", password));
+		assertDoesNotThrow(() -> IRODSApi.authenticate(comm, "native", password));
 
-		var sqlOnly = false;
-		var columnMappings = false;
-		var results = API.rcGenQuery2(comm, "select COLL_NAME", Optional.empty(), sqlOnly, columnMappings);
-		assertNotNull(results);
-		log.info("results = {}", results);
+		var input = new Genquery2Input_PI();
+		input.query_string = "select COLL_NAME";
+		input.zone = zone;
+		input.sql_only = 0;
+		input.column_mappings = 0;
+		var output = new Reference<String>();
+		assertEquals(IRODSApi.rcGenQuery2(comm, input, output), 0);
+		assertNotNull(output);
+		assertNotNull(output.value);
+		log.info("results = {}", output.value);
 
-		assertDoesNotThrow(() -> API.rcDisconnect(comm));
+		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
 	}
 
 }

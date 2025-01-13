@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 
-import org.irods.irods4j.api.API;
+import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.low_level.network.Network;
 import org.irods.irods4j.low_level.protocol.packing_instructions.BinBytesBuf_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CS_NEG_PI;
@@ -617,12 +617,12 @@ class TestConnectAndDisconnect {
 		final var port = 1247;
 		final var zone = "tempZone";
 		final var username = "kory";
-		final var password = "kpass";
+		final var password = "rods";
 		
-		var comm = assertDoesNotThrow(() -> API.rcConnect(host, port, zone, username));
+		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, zone, username));
 		assertNotNull(comm);
-		assertDoesNotThrow(() -> API.authenticate(comm, "native", password));
-		assertDoesNotThrow(() -> API.rcDisconnect(comm));
+		assertDoesNotThrow(() -> IRODSApi.authenticate(comm, "native", password));
+		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
 	}
 
 }
