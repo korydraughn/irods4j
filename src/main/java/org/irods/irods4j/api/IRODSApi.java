@@ -21,6 +21,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.CollEnt_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollInpNew_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollOprStat_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjCopyInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInfo_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DelayRuleLockInput_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DelayRuleUnlockInput_PI;
@@ -33,6 +34,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_
 import org.irods.irods4j.low_level.protocol.packing_instructions.GridConfigurationInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GridConfigurationOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.INT_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.IRODS_STR_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.MiscSvrInfo_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ModAVUMetadataInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ModAccessControlInp_PI;
@@ -41,6 +43,9 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.MsParamArray_PI
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ProcStatInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_DEL_INP_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_MOD_INP_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RegReplica_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.STR_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
@@ -662,6 +667,7 @@ public class IRODSApi {
 		return mh.intInfo;
 	}
 
+	// TODO Should this API be exposed to clients?
 	public static int rcRegisterPhysicalPath(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 20008, input);
@@ -1068,6 +1074,79 @@ public class IRODSApi {
 
 		if (mh.msgLen > 0) {
 			output.value = Network.readObject(comm.socket, mh.msgLen, GenQueryOut_PI.class);
+		}
+
+		return mh.intInfo;
+	}
+
+	public static int rcRuleExecSubmit(RcComm comm, RULE_EXEC_DEL_INP_PI input, Reference<String> output)
+			throws IOException {
+		sendApiRequest(comm.socket, 623, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		if (mh.msgLen < 0) {
+			return mh.intInfo;
+		}
+
+		if (mh.msgLen > 0) {
+			var tmp = Network.readObject(comm.socket, mh.msgLen, IRODS_STR_PI.class);
+			output.value = tmp.myStr;
+		}
+
+		return mh.intInfo;
+	}
+
+	public static int rcRuleExecMod(RcComm comm, RULE_EXEC_MOD_INP_PI input) throws IOException {
+		sendApiRequest(comm.socket, 708, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		return mh.intInfo;
+	}
+
+	public static int rcRuleExecDel(RcComm comm, RULE_EXEC_DEL_INP_PI input) throws IOException {
+		sendApiRequest(comm.socket, 624, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		return mh.intInfo;
+	}
+
+	// TODO This API is likely for server-side use only due to it only being invoked
+	// within the server. Consider removing this.
+	public static int rcRegReplica(RcComm comm, RegReplica_PI input) throws IOException {
+		sendApiRequest(comm.socket, 621, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		return mh.intInfo;
+	}
+
+	// TODO This API is not used in server at all. We should probably deprecate it or remove
+	// it from the public interface. Consider removing this.
+	public static int rcRegDataOb(RcComm comm, DataObjInfo_PI input, Reference<DataObjInfo_PI> output)
+			throws IOException {
+		sendApiRequest(comm.socket, 619, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		if (mh.msgLen < 0) {
+			return mh.intInfo;
+		}
+
+		if (mh.msgLen > 0) {
+			output.value = Network.readObject(comm.socket, mh.msgLen, DataObjInfo_PI.class);
 		}
 
 		return mh.intInfo;
