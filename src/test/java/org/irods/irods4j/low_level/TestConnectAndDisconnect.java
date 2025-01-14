@@ -1,4 +1,4 @@
-package irods4j;
+package org.irods.irods4j.low_level;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -617,11 +617,9 @@ class TestConnectAndDisconnect {
 		final var port = 1247;
 		final var zone = "tempZone";
 		final var username = "kory";
-		final var password = "rods";
 		
 		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, zone, username));
 		assertNotNull(comm);
-		assertDoesNotThrow(() -> IRODSApi.authenticate(comm, "native", password));
 		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
 	}
 

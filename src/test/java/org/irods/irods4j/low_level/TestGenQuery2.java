@@ -1,4 +1,4 @@
-package irods4j;
+package org.irods.irods4j.low_level;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;

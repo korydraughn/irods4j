@@ -1,4 +1,4 @@
-package irods4j;
+package org.irods.irods4j.low_level;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class TestSwitchUser {
+class TestNativeAuthentication {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
