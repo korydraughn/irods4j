@@ -4,16 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.low_level.protocol.packing_instructions.ModAVUMetadataInp_PI;
+import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class TestModAVUMetadata {
+class TestRcObjStat {
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -35,28 +37,18 @@ class TestModAVUMetadata {
 	}
 
 	@Test
-	void testAddingAndRemovingMetadata() throws IOException {
-		var collection = Paths.get("/", zone, "home", username).toString();
-		var avuName = "irods4j::name";
-		var avuValue = "irods4j::value";
-		var avuUnit = "irods4j::unit";
+	void testRcObjStat() throws IOException {
+		var input = new DataObjInp_PI();
+		input.objPath = "/tempZone/home/" + username;
+		input.KeyValPair_PI = new KeyValPair_PI();
+		input.KeyValPair_PI.ssLen = 0;
 
-		// Add metadata to the user's home collection.
-		var input = new ModAVUMetadataInp_PI();
-		input.arg0 = "set";
-		input.arg1 = "-C";
-		input.arg2 = collection;
-		input.arg3 = avuName;
-		input.arg4 = avuValue;
-		input.arg5 = avuUnit;
+		var output = new Reference<RodsObjStat_PI>();
 
-		var ec = IRODSApi.rcModAVUMetadata(comm, input);
+		var ec = IRODSApi.rcObjStat(comm, input, output);
 		assertEquals(ec, 0);
-
-		// Remove the recently added metadata from the user's home collection.
-		input.arg0 = "rm";
-		ec = IRODSApi.rcModAVUMetadata(comm, input);
-		assertEquals(ec, 0);
+		assertNotNull(output);
+		assertNotNull(output.value);
 	}
 
 }

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class TestGeneralAdmin {
+class TestRcGeneralAdmin {
 
 	static String host = "localhost";
 	static int port = 1247;

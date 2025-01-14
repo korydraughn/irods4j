@@ -15,19 +15,15 @@ import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
-import org.irods.irods4j.common.XmlUtil;
-import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInfo_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
-import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.ModDataObjMeta_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjInp_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class TestModDataObjMeta {
+class TestRcDataObjChksum {
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -44,7 +40,7 @@ class TestModDataObjMeta {
 		assertNotNull(comm);
 		IRODSApi.authenticate(comm, "native", password);
 
-		dataObjPath = Paths.get("/", zone, "home", username, "createdByTestModDataObjMeta.txt").toString();
+		dataObjPath = Paths.get("/", zone, "home", username, "createdByTestDataObjChksumSuite.txt").toString();
 
 		// Open a data object for writing.
 		var openInput = new DataObjInp_PI();
@@ -98,43 +94,23 @@ class TestModDataObjMeta {
 	}
 
 	@Test
-	void testRcModDataObjMeta() throws IOException {
-		XmlUtil.enablePrettyPrinting();
-		var expectedChecksum = "irods4j:set_by_testRcModDataObjMeta";
-
-		// Add a bogus checksum to the test data object.
-		var input = new ModDataObjMeta_PI();
-		input.DataObjInfo_PI = new DataObjInfo_PI();
-		input.DataObjInfo_PI.objPath = dataObjPath;
-		input.DataObjInfo_PI.KeyValPair_PI = new KeyValPair_PI();
-		input.DataObjInfo_PI.KeyValPair_PI.ssLen = 0;
+	void testChecksumDataObject() throws IOException {
+		var input = new DataObjInp_PI();
+		input.objPath = dataObjPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 1;
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
+		input.KeyValPair_PI.keyWord.add("forceFlag");
 		input.KeyValPair_PI.svalue = new ArrayList<>();
-		input.KeyValPair_PI.keyWord.add("chksum");
-		input.KeyValPair_PI.svalue.add(expectedChecksum);
-
-		var ec = IRODSApi.rcModDataObjMeta(comm, input);
-		assertEquals(ec, 0);
-
-		var gq2Input = new Genquery2Input_PI();
-		gq2Input.query_string = String.format("select COLL_NAME, DATA_NAME where DATA_CHECKSUM = '%s'",
-				expectedChecksum);
-		gq2Input.zone = zone;
+		input.KeyValPair_PI.svalue.add("");
 
 		var output = new Reference<String>();
 
-		ec = IRODSApi.rcGenQuery2(comm, gq2Input, output);
+		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);
-
-		var logicalPath = Paths.get(dataObjPath);
-		var collName = logicalPath.getParent().toString();
-		var dataName = logicalPath.getFileName().toString();
-		assertTrue(output.value.contains(String.format("[\"%s\",\"%s\"]", collName, dataName)));
-
+		assertTrue("sha2:S8C1OsiUDW26PD33h0Y1jSUjKgEsG5G6449Ko4wsW5A=".equals(output.value));
 	}
 
 }
