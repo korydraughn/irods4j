@@ -81,6 +81,38 @@ public class IRODSApi {
 		String apiVersion;
 		int status;
 		int cookie;
+		
+		public String getReleaseVersion() {
+			return relVersion;
+		}
+		
+		public String getApiVersion() {
+			return apiVersion;
+		}
+		
+		public String getClientUsername() {
+			return clientUsername;
+		}
+		
+		public String getClientUserZone() {
+			return clientUserZone;
+		}
+
+		public String getProxyUsername() {
+			return proxyUsername;
+		}
+		
+		public String getProxyUserZone() {
+			return proxyUserZone;
+		}
+		
+		public boolean isLoggedIn() {
+			return loggedIn;
+		}
+
+		public boolean isUsingTLS() {
+			return usingTLS;
+		}
 	}
 
 	public static void setApplicationName(String name) {
@@ -191,6 +223,7 @@ public class IRODSApi {
 		log.debug("Received CS_NEG_PI: {}", XmlUtil.toXmlString(csneg));
 
 		// TODO Add support for SSL/TLS.
+		comm.usingTLS = false;
 
 		// No TLS support implemented at this time, so tell the server
 		// we want to move forward without TLS.

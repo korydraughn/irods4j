@@ -6,7 +6,7 @@ public class DataObjInfo_PI {
 	public String rescName;
 	public String rescHier;
 	public String dataType;
-	public double dataSize;
+	public int dataSize; // PI defines it as double, but should be an int.
 	public String chksum;
 	public String version;
 	public String filePath;
@@ -14,9 +14,9 @@ public class DataObjInfo_PI {
 	public String dataOwnerZone;
 	public int replNum;
 	public int replStatus;
-	public String statusStringing;
-	public double dataId;
-	public double collId;
+	public String statusString;
+	public int dataId; // PI defines it as double, but should be an int.
+	public int collId; // PI defines it as double, but should be an int.
 	public int dataMapId;
 	public int flags;
 	public String dataComments;
@@ -27,7 +27,7 @@ public class DataObjInfo_PI {
 	public String dataAccess;
 	public int dataAccessInx;
 	public int writeFlag;
-	public String deStringescName;
+	public String destRescName;
 	public String backupRescName;
 	public String subPath;
 	public int specColl; 
@@ -36,6 +36,6 @@ public class DataObjInfo_PI {
 	public KeyValPair_PI KeyValPair_PI;
 	public String in_pdmo;
 	public int next;
-	public double rescId;
+	public int rescId; // PI defines it as double, but should be an int.
 
 }
