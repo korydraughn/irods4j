@@ -10,6 +10,8 @@ import java.util.HashMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.irods.irods4j.authentication.AuthConstants;
+import org.irods.irods4j.authentication.AuthManager;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.common.XmlUtil;
@@ -82,6 +84,10 @@ public class IRODSApi {
 		int status;
 		int cookie;
 		
+		public Socket getSocket() {
+			return socket;
+		}
+		
 		public String getReleaseVersion() {
 			return relVersion;
 		}
@@ -106,12 +112,24 @@ public class IRODSApi {
 			return proxyUserZone;
 		}
 		
+		public void setLoggedInToTrue() {
+			loggedIn = true;
+		}
+		
 		public boolean isLoggedIn() {
 			return loggedIn;
 		}
 
 		public boolean isUsingTLS() {
 			return usingTLS;
+		}
+		
+		public void setSessionSignature(String v) {
+			sessionSignature = v;
+		}
+		
+		public String getSessionSignature() {
+			return sessionSignature;
 		}
 	}
 
@@ -258,6 +276,13 @@ public class IRODSApi {
 		hdr.type = MsgHeader_PI.MsgType.RODS_DISCONNECT;
 		Network.write(comm.socket, hdr);
 		comm.socket.close();
+	}
+
+	public static void rcAuthenticateClient(RcComm comm, String authScheme, String password) throws Exception {
+		var input = JsonUtil.getJsonMapper().createObjectNode();
+		input.put("password", password);
+		input.put(AuthConstants.AUTH_TTL_KEY, "0");
+		AuthManager.authenticateClient(comm, authScheme, input);
 	}
 
 	public static void authenticate(RcComm comm, String authScheme, String password)
