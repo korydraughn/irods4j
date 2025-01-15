@@ -26,6 +26,10 @@ public class XmlUtil {
 		xm = other;
 		return old;
 	}
+	
+	public static XmlMapper getXmlMapper() {
+		return xm;
+	}
 
 	public static void enablePrettyPrinting() {
 		xm.enable(SerializationFeature.INDENT_OUTPUT);

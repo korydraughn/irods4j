@@ -3,10 +3,12 @@ package org.irods.irods4j.high_level.io;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
@@ -58,30 +60,10 @@ public class DataObjectStream implements Closeable {
 	 * @throws IRODSException
 	 */
 	public void open(String logicalPath, int openMode) throws IOException, IRODSException {
-		if (null == logicalPath || logicalPath.isEmpty()) {
-			throw new IllegalArgumentException("Logical path is null or empty");
-		}
-
-		var input = new DataObjInp_PI();
-		input.objPath = logicalPath;
-		input.dataSize = -1;
-		input.createMode = 0600;
-		input.openFlags = openMode;
-		input.KeyValPair_PI = new KeyValPair_PI();
-		input.KeyValPair_PI.ssLen = 0;
-
-		var output = new Reference<String>();
-
-		var ec = IRODSApi.rcReplicaOpen(comm, input, output);
-		if (ec < 0) {
-			throw new IRODSException(ec, "Open error: " + logicalPath);
-		}
-
-		fd = ec;
-
-		// TODO Parse JSON output and capture the following:
-		// - replica number
-		// - replica token
+		Optional<Integer> replicaNumber = Optional.empty();
+		Optional<String> rootResource = Optional.empty();
+		Optional<String> replicaToken = Optional.empty();
+		openImpl(logicalPath, openMode, replicaNumber, rootResource, replicaToken);
 	}
 
 	/**
@@ -89,10 +71,13 @@ public class DataObjectStream implements Closeable {
 	 * @param logicalPath
 	 * @param replicaNumber
 	 * @param openMode
+	 * @throws IRODSException
+	 * @throws IOException
 	 */
-	public void open(String logicalPath, int replicaNumber, int openMode) {
-		// TODO
-		throw new UnsupportedOperationException("Not implemented");
+	public void open(String logicalPath, int replicaNumber, int openMode) throws IOException, IRODSException {
+		Optional<String> rootResource = Optional.empty();
+		Optional<String> replicaToken = Optional.empty();
+		openImpl(logicalPath, openMode, Optional.of(replicaNumber), rootResource, replicaToken);
 	}
 
 	/**
@@ -100,10 +85,13 @@ public class DataObjectStream implements Closeable {
 	 * @param logicalPath
 	 * @param rootResource
 	 * @param openMode
+	 * @throws IRODSException
+	 * @throws IOException
 	 */
-	public void open(String logicalPath, String rootResource, int openMode) {
-		// TODO
-		throw new UnsupportedOperationException("Not implemented");
+	public void open(String logicalPath, String rootResource, int openMode) throws IOException, IRODSException {
+		Optional<Integer> replicaNumber = Optional.empty();
+		Optional<String> replicaToken = Optional.empty();
+		openImpl(logicalPath, openMode, replicaNumber, Optional.of(rootResource), replicaToken);
 	}
 
 	/**
@@ -112,10 +100,13 @@ public class DataObjectStream implements Closeable {
 	 * @param logicalPath
 	 * @param replicaNumber
 	 * @param openMode
+	 * @throws IRODSException
+	 * @throws IOException
 	 */
-	public void open(String replicaToken, String logicalPath, int replicaNumber, int openMode) {
-		// TODO
-		throw new UnsupportedOperationException("Not implemented");
+	public void open(String replicaToken, String logicalPath, int replicaNumber, int openMode)
+			throws IOException, IRODSException {
+		Optional<String> rootResource = Optional.empty();
+		openImpl(logicalPath, openMode, Optional.of(replicaNumber), rootResource, Optional.of(replicaToken));
 	}
 
 	/**
@@ -124,10 +115,13 @@ public class DataObjectStream implements Closeable {
 	 * @param logicalPath
 	 * @param rootResource
 	 * @param openMode
+	 * @throws IRODSException
+	 * @throws IOException
 	 */
-	public void open(String replicaToken, String logicalPath, String rootResource, int openMode) {
-		// TODO
-		throw new UnsupportedOperationException("Not implemented");
+	public void open(String replicaToken, String logicalPath, String rootResource, int openMode)
+			throws IOException, IRODSException {
+		Optional<Integer> replicaNumber = Optional.empty();
+		openImpl(logicalPath, openMode, replicaNumber, Optional.of(rootResource), Optional.of(replicaToken));
 	}
 
 	/**
@@ -165,6 +159,8 @@ public class DataObjectStream implements Closeable {
 		}
 
 		fd = -1;
+		replicaNumber = -1;
+		replicaToken = null;
 	}
 
 	/**
@@ -291,6 +287,65 @@ public class DataObjectStream implements Closeable {
 		return replicaToken;
 	}
 
+	private void openImpl(String logicalPath, int openMode, Optional<Integer> replicaNumber,
+			Optional<String> rootResource, Optional<String> replicaToken) throws IOException, IRODSException {
+		if (null == logicalPath || logicalPath.isEmpty()) {
+			throw new IllegalArgumentException("Logical path is null or empty");
+		}
+
+		var input = new DataObjInp_PI();
+		input.objPath = logicalPath;
+		input.dataSize = -1;
+		input.createMode = 0600;
+		input.openFlags = openMode;
+		input.KeyValPair_PI = new KeyValPair_PI();
+		input.KeyValPair_PI.ssLen = 0;
+
+		replicaNumber.ifPresent(v -> {
+			input.KeyValPair_PI.keyWord.add(IRODSKeywords.REPL_NUM);
+			input.KeyValPair_PI.svalue.add(v.toString());
+			this.replicaNumber = v;
+		});
+
+		rootResource.ifPresent(v -> {
+			if (replicaNumber.isPresent()) {
+				throw new IllegalStateException("Replica number and root resource cannot be set at the same time");
+			}
+			input.KeyValPair_PI.keyWord.add(IRODSKeywords.RESC_NAME);
+			input.KeyValPair_PI.svalue.add(v);
+		});
+
+		replicaToken.ifPresent(v -> {
+			input.KeyValPair_PI.keyWord.add(IRODSKeywords.REPLICA_TOKEN);
+			input.KeyValPair_PI.svalue.add(v);
+			this.replicaToken = v;
+		});
+
+		var output = new Reference<String>();
+
+		var ec = IRODSApi.rcReplicaOpen(comm, input, output);
+		if (ec < 0) {
+			throw new IRODSException(ec, "Open error: " + logicalPath);
+		}
+
+		fd = ec;
+
+		// Capture information from the L1 descriptor JSON payload.
+		// This information eases parallel transfer initialization.
+
+		var jm = JsonUtil.getJsonMapper();
+		var l1descInfo = jm.readTree(output.value);
+		var doi = l1descInfo.get("data_object_info");
+
+		if (-1 == this.replicaNumber) {
+			this.replicaNumber = doi.get("replica_number").asInt();
+		}
+		
+		if (null == this.replicaToken) {
+			this.replicaToken = l1descInfo.get("replica_token").asText();
+		}
+	}
+
 	private static void throwIfInvalidL1Descriptor(int fd) {
 		if (-1 == fd) {
 			throw new IllegalStateException("Stream not open");
@@ -299,7 +354,7 @@ public class DataObjectStream implements Closeable {
 
 	private static void throwIfInvalidBufferSize(int bufferSize, int count) {
 		if (count < 0 || count > bufferSize) {
-			throw new IllegalArgumentException("Byte count is less than 0 or exceeds buffer size");
+			throw new IndexOutOfBoundsException("Byte count is less than 0 or exceeds buffer size");
 		}
 	}
 

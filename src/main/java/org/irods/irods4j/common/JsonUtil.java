@@ -16,6 +16,10 @@ public class JsonUtil {
 		om = other;
 		return old;
 	}
+	
+	public static ObjectMapper getJsonMapper() {
+		return om;
+	}
 
 	public static void enablePrettyPrinting() {
 		om.enable(SerializationFeature.INDENT_OUTPUT);
