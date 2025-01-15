@@ -1,6 +1,5 @@
 package org.irods.irods4j.high_level.io;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Optional;
@@ -19,7 +18,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjIn
 /**
  * 
  */
-public class DataObjectStream implements Closeable {
+public class DataObjectStream implements AutoCloseable {
 
 	private RcComm comm;
 	private int fd = -1;
@@ -128,7 +127,7 @@ public class DataObjectStream implements Closeable {
 	 * 
 	 */
 	@Override
-	public void close() throws IOException {
+	public void close() throws Exception {
 		close(null);
 	}
 
@@ -340,7 +339,7 @@ public class DataObjectStream implements Closeable {
 		if (-1 == this.replicaNumber) {
 			this.replicaNumber = doi.get("replica_number").asInt();
 		}
-		
+
 		if (null == this.replicaToken) {
 			this.replicaToken = l1descInfo.get("replica_token").asText();
 		}
