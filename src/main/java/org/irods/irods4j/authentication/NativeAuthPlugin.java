@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class NativeAuthPlugin extends AuthPlugin {
 	
-	public static final Logger log = LogManager.getLogger();
+	private static final Logger log = LogManager.getLogger();
 
 	public NativeAuthPlugin() {
 		addOperation(AUTH_ESTABLISH_CONTEXT, this::establishContext);

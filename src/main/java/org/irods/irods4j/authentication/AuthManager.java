@@ -18,7 +18,7 @@ public class AuthManager {
 
 		AuthPlugin plugin = new NativeAuthPlugin();// TODO Dynamically load plugin based on auth scheme.
 
-		var nextOp = AuthConstants.AUTH_CLIENT_START;
+		var nextOp = AuthPlugin.AUTH_CLIENT_START;
 
 		var req = context.deepCopy();
 		var mutableReq = (ObjectNode) req;
