@@ -4,13 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.SwitchUserInp_PI;
@@ -40,7 +37,7 @@ class TestRcSwitchUser {
 	}
 
 	@Test
-	void testRcSwitchUser() throws IOException, IRODSException, NoSuchAlgorithmException {
+	void testRcSwitchUser() throws Exception {
 		var otherUser = "otherRods";
 
 		// Add a new rodsuser to the zone.
@@ -68,11 +65,11 @@ class TestRcSwitchUser {
 		ec = IRODSApi.rcSwitchUser(comm, switchUserInput);
 		assertEquals(ec, 0);
 		// The client user information in the RcComm should reflect the new rodsuser.
-		assertTrue(otherUser.equals(comm.getClientUsername()));
-		assertTrue(zone.equals(comm.getClientUserZone()));
+		assertTrue(otherUser.equals(comm.clientUsername));
+		assertTrue(zone.equals(comm.clientUserZone));
 		// The proxy user information in the RcComm should reflect the new rodsuser.
-		assertTrue(otherUser.equals(comm.getProxyUsername()));
-		assertTrue(zone.equals(comm.getProxyUserZone()));
+		assertTrue(otherUser.equals(comm.proxyUsername));
+		assertTrue(zone.equals(comm.proxyUserZone));
 
 		// Connect as the local rodsadmin and remove the recently created user.
 		// This is required because we became a rodsuser, which means we lost

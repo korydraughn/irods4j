@@ -1,17 +1,24 @@
 package org.irods.irods4j.api;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManagerFactory;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.authentication.AuthConstants;
 import org.irods.irods4j.authentication.AuthManager;
+import org.irods.irods4j.authentication.AuthPlugin;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.common.XmlUtil;
@@ -49,6 +56,8 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_DEL_I
 import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_MOD_INP_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RegReplica_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.SSLEndInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.SSLStartInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.STR_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.StartupPack_PI;
@@ -66,71 +75,26 @@ public class IRODSApi {
 	private static String appName = "irods4j";
 
 	public static class RcComm {
-		Socket socket;
+		public Socket socket;
+		public Socket plainSocket;
+		public SSLSocket sslSocket;
 
-		boolean usingTLS = false;
-		boolean loggedIn = false;
+		public boolean usingTLS = false;
+		public boolean secure = false;
+		public boolean loggedIn = false;
 
-		String clientUsername;
-		String clientUserZone;
+		public String clientUsername;
+		public String clientUserZone;
 
-		String proxyUsername;
-		String proxyUserZone;
+		public String proxyUsername;
+		public String proxyUserZone;
 
-		String sessionSignature;
+		public String sessionSignature;
 
-		String relVersion;
-		String apiVersion;
-		int status;
-		int cookie;
-		
-		public Socket getSocket() {
-			return socket;
-		}
-		
-		public String getReleaseVersion() {
-			return relVersion;
-		}
-		
-		public String getApiVersion() {
-			return apiVersion;
-		}
-		
-		public String getClientUsername() {
-			return clientUsername;
-		}
-		
-		public String getClientUserZone() {
-			return clientUserZone;
-		}
-
-		public String getProxyUsername() {
-			return proxyUsername;
-		}
-		
-		public String getProxyUserZone() {
-			return proxyUserZone;
-		}
-		
-		public void setLoggedInToTrue() {
-			loggedIn = true;
-		}
-		
-		public boolean isLoggedIn() {
-			return loggedIn;
-		}
-
-		public boolean isUsingTLS() {
-			return usingTLS;
-		}
-		
-		public void setSessionSignature(String v) {
-			sessionSignature = v;
-		}
-		
-		public String getSessionSignature() {
-			return sessionSignature;
-		}
+		public String relVersion;
+		public String apiVersion;
+		public int status;
+		public int cookie;
 	}
 
 	public static void setApplicationName(String name) {
@@ -186,7 +150,7 @@ public class IRODSApi {
 	}
 
 	public static RcComm rcConnect(String host, int port, String zone, String username)
-			throws UnknownHostException, IOException, IRODSException {
+			throws Exception {
 		if (null == host || host.isEmpty()) {
 			throw new IllegalArgumentException("Host is null or empty");
 		}
@@ -204,7 +168,7 @@ public class IRODSApi {
 		}
 
 		RcComm comm = new RcComm();
-		comm.socket = new Socket(host, port);
+		comm.socket = comm.plainSocket = new Socket(host, port);
 
 		// Create the StartupPack message.
 		// This is how a connection to iRODS is always initiated.
@@ -236,16 +200,52 @@ public class IRODSApi {
 		// Negotiation
 
 		// Prepare to the negotiate whether a secure communication
-		// channel is needed.
+		// channel is needed. The server's response will contain its
+		// choice for secure communication.
 		var csneg = Network.readObject(comm.socket, mh.msgLen, CS_NEG_PI.class);
 		log.debug("Received CS_NEG_PI: {}", XmlUtil.toXmlString(csneg));
+		
+		// Check for negotiation errors.
+		// 1 = CS_NEG_STATUS_SUCCESS
+		// 0 = CS_NEG_STATUS_FAILURE
+		// See irods_client_server_negotiation.hpp for these.
+		if (1 != csneg.status) {
+			// TODO Handle error. Server may be in a bad state.
+			log.error("Client-Server negotiation error: CS_NEG_STATUS={}", csneg.status);
+		}
+		
+		// Get the client's negotiation policy and resolve it against
+		// the server's policy. 
+		// TODO This part MUST be configurable by the client (e.g. read from
+		// a config file).
+		// TODO For now, let's just try to meet the server's demands. The
+		// solution is to implement the negotiate function in
+		// irods_client_negotiation.cpp#L268 from the main branch.
+		var closeSocket = false; 
+		if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(csneg.result)) {
+			log.debug("Client-Server negotiation will use TLS");
+			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+			comm.usingTLS = true;
+		}
+		else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(csneg.result)) {
+			log.debug("Client-Server negotiation will use TLS");
+			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+			comm.usingTLS = true;
+		}
+		else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(csneg.result)) {
+			log.debug("Client-Server negotiation will not use TLS");
+			csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
+		}
+		else {
+			// TODO Handle error. Unknown negotiation result.
+			// Send the server a CS_NEG_PI request telling it the
+			// negotiation failed. Then close the socket and return
+			// an error (or throw an exception).
+			csneg.status = 0; // CS_NEG_STATUS_FAILURE
+			csneg.result = "cs_neg_result_kw=CS_NEG_FAILURE;";
+			closeSocket = true;
+		}
 
-		// TODO Add support for SSL/TLS.
-		comm.usingTLS = false;
-
-		// No TLS support implemented at this time, so tell the server
-		// we want to move forward without TLS.
-		csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
 		msgbody = XmlUtil.toXmlString(csneg);
 		hdr.type = MsgHeader_PI.MsgType.RODS_CS_NEG_T;
 		hdr.msgLen = msgbody.length();
@@ -255,6 +255,12 @@ public class IRODSApi {
 		// Read the message header from the server.
 		mh = Network.readMsgHeader_PI(comm.socket);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+		
+		// TODO Does the server automatically close the socket after a
+		// failed client-server negotiation attempt?
+//		if (closeSocket) {
+//			comm.socket.close();
+//		}
 
 		if (mh.intInfo < 0) {
 			throw new IRODSException(mh.intInfo, "Client-Server negotiation failure");
@@ -267,8 +273,142 @@ public class IRODSApi {
 		comm.relVersion = vers.relVersion;
 		comm.status = vers.status;
 		comm.cookie = vers.cookie;
+		
+		// TODO In the C implementation, this is where the network_plugin
+		// is instantiated and the decision to use TLS happens. That decision
+		// is based on the negotiation results, which are stored in the RcComm.
+		// The RcComm holds information about encryption and other parameters.
+		// That's why messages appear to be encrypted following the version
+		// response from the server.
+		enableTLS(comm);
 
 		return comm;
+	}
+	
+	private static void enableTLS(RcComm comm) throws Exception {
+		if (comm.secure) {
+			log.debug("SSL/TLS is already in use.");
+			return;
+		}
+		
+		if (!comm.usingTLS) {
+			log.debug("Skipping enabling of SSL/TLS communication.");
+			return;
+		}
+		
+		// TODO The code below is needed by the PamPasswordAuthPlugin.
+		// for when the client isn't using TLS initially, but wants to
+		// use PAM.
+		//
+		// This TODO can be ignored if we avoid making the PamPasswordAuthPlugin
+		// magically enable TLS. Perhaps it should throw an exception when
+		// the RcComm isn't using a secure communication channel?
+
+		// Load the truststore.
+		log.debug("Loading Truststore.");
+		var trustStore = KeyStore.getInstance("JKS");
+		// TODO Make the truststore file configurable.
+		try (var fis = new FileInputStream("/home/kory/eclipse-workspace/irods4j/truststore.jks")) {
+			// TODO Make the password configurable and optional.
+			trustStore.load(fis, "changeit".toCharArray());
+		}
+
+		// Initialize the TrustManager.
+		log.debug("Initializing Truststore.");
+		var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		tmf.init(trustStore);
+
+		// Configure SSLContext with the TrustManager.
+		log.debug("Initializing SSL context.");
+		var sslContext = SSLContext.getInstance("TLSv1.2");
+		sslContext.init(null, tmf.getTrustManagers(), null);
+
+		// Create SSLSocket and connect.
+		log.debug("Upgrading socket to use TLS.");
+		var factory = sslContext.getSocketFactory();
+		var host = comm.socket.getInetAddress().getHostAddress();
+		var port = comm.socket.getPort();
+		var autoCloseUnderlyingSocket = true;
+		comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
+		log.debug("Supported SSL/TLS protocols: {}", Arrays.toString(comm.sslSocket.getSupportedProtocols()));
+		comm.sslSocket.startHandshake();
+		log.debug("Connected securely using self-signed certificate.");
+		
+		// See ssl.cpp in irods/irods to understand the following sequence of
+		// operations. The code below follows ssl_client_start() and ssl_agent_start().
+
+		// Send SSL encryption information to server.
+		// TODO Allow developer to configure these options. These are the defaults for
+		// testing.
+		var encryptionAlgorithm = "AES-256-CBC";
+		var encryptionKeySize = 32;
+		var encryptionNumHashRounds = 16;
+		var encryptionSaltSize = 8;
+
+		var mh = new MsgHeader_PI();
+		mh.type = encryptionAlgorithm;
+		mh.msgLen = encryptionKeySize;
+		mh.errorLen = encryptionSaltSize;
+		mh.bsLen = encryptionNumHashRounds;
+
+		Network.write(comm.sslSocket, mh);
+
+		// Generate a random byte sequence as a key and send it to the server.
+		var key = new byte[encryptionKeySize];
+		var secureRandom = new SecureRandom();
+		secureRandom.nextBytes(key);
+
+		var bbuf = new BytesBuf_PI();
+		bbuf.buflen = key.length;
+		bbuf.buf = key;
+		var msgbody = XmlUtil.toXmlString(bbuf);
+
+	    mh.type = "SHARED_SECRET";
+	    mh.msgLen = msgbody.length();
+	    mh.errorLen = 0;
+	    mh.bsLen = 0;
+	    mh.intInfo = 0;
+
+		Network.write(comm.sslSocket, mh);
+		Network.writeXml(comm.sslSocket, bbuf);
+
+		// TODO Do equivalent of sslPostConnectionCheck().
+		// See sslSockComm.cpp#L90 on the main branch. The function of
+		// interest is sslStart(). If the check fails, sslEnd() is called,
+		// which invokes rcSslEnd() and returns an error of SSL_CERT_ERROR.
+
+		// This keeps the rest of the code from needing to know
+		// the type of the socket used for communication.
+		comm.socket = comm.sslSocket;
+
+		// Used as a signal to this function to guard against this
+		// function being executed multiple times.
+		comm.secure = true;
+	}
+	
+	// TODO Consider removing this function.
+	private static int rcSslStart(RcComm comm) throws IOException {
+		var input = new SSLStartInp_PI();
+		input.arg0 = null;
+		sendApiRequest(comm.socket, 1100, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		return mh.intInfo;
+	}
+
+	// TODO Consider removing this function.
+	private static int rcSslEnd(RcComm comm) throws IOException {
+		var input = new SSLEndInp_PI();
+		sendApiRequest(comm.socket, 1101, input);
+
+		// Read the message header from the server.
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+
+		return mh.intInfo;
 	}
 
 	public static void rcDisconnect(RcComm comm) throws IOException {
@@ -281,7 +421,7 @@ public class IRODSApi {
 	public static void rcAuthenticateClient(RcComm comm, String authScheme, String password) throws Exception {
 		var input = JsonUtil.getJsonMapper().createObjectNode();
 		input.put("password", password);
-		input.put(AuthConstants.AUTH_TTL_KEY, "0");
+		input.put(AuthPlugin.AUTH_TTL_KEY, "0"); // TODO Expose this option and others.
 		AuthManager.authenticateClient(comm, authScheme, input);
 	}
 

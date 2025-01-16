@@ -30,8 +30,8 @@ public class NativeAuthPlugin extends AuthPlugin {
 		resp.put(AUTH_NEXT_OPERATION, AUTH_CLIENT_AUTH_REQUEST);
 		// TODO Why attach the proxy user's name and zone?
 		// Seems these should use the client's info.
-		resp.put("user_name", comm.getProxyUsername());
-		resp.put("zone_name", comm.getProxyUserZone());
+		resp.put("user_name", comm.proxyUsername);
+		resp.put("zone_name", comm.proxyUserZone);
 		return resp;
 	}
 
@@ -58,9 +58,7 @@ public class NativeAuthPlugin extends AuthPlugin {
 		// The user could enter a long password which gets truncated!
 		passwordSb.append(context.get("password").asText());
 		passwordSb.setLength(MAX_PASSWORD_LEN);
-		log.debug("passwordSb length = [{}]", passwordSb.length());
 		log.debug("passwordSb string = [{}]", passwordSb.toString());
-		log.debug("passwordSb string length = [{}]", passwordSb.toString().length());
 
 		// TODO Compute the session signature and store it in the RcComm.
 		// See plugins/auth/src/native.cpp for details
@@ -68,20 +66,15 @@ public class NativeAuthPlugin extends AuthPlugin {
 
 		var md5BufSb = new StringBuilder();
 		// [64+1] is the challenge string received by the server.
+		// The "+1" is space for the null byte.
 		md5BufSb.append(requestResultSb);
 		// [50+1] is the deobfuscated user's password.
+		// The "+1" is space for the null byte.
 		md5BufSb.append(passwordSb);
-		// The "+2" is for the two null-terminating bytes.
-		// TODO The following line is disabled because it breaks authentication for some
-		// strange reason.
 		log.debug("MD5 string = [{}]", md5BufSb.toString());
-		// The line below is fine as long as we limit its size to CHALLENGE_LEN + MAX_PASSWORD_LEN.
-		// See the hasher.update() line involving ".substring()".
-//		md5BufSb.setLength(CHALLENGE_LEN + MAX_PASSWORD_LEN + 2);
 
 		var hasher = MessageDigest.getInstance("md5");
 		hasher.update(md5BufSb.toString().getBytes(StandardCharsets.UTF_8));
-//		hasher.update(md5BufSb.substring(0, CHALLENGE_LEN + MAX_PASSWORD_LEN).getBytes(StandardCharsets.UTF_8));
 
 		// Make sure the byte sequence doesn't end early.
 		// Scrub out any errant terminating characters by incrementing
@@ -122,7 +115,7 @@ public class NativeAuthPlugin extends AuthPlugin {
 		req.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
 		var resp = request(comm, req);
 
-		comm.setLoggedInToTrue();
+		comm.loggedIn = true;
 		((ObjectNode) resp).put(AUTH_NEXT_OPERATION, AUTH_FLOW_COMPLETE);
 
 		return resp;

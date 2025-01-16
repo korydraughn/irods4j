@@ -16,7 +16,17 @@ public class AuthManager {
 	public static void authenticateClient(RcComm comm, String authScheme, JsonNode context) throws Exception {
 		log.debug(">>> STARTING AUTHENTICATION");
 
-		AuthPlugin plugin = new NativeAuthPlugin();// TODO Dynamically load plugin based on auth scheme.
+		// TODO Dynamically load plugin based on auth scheme.
+		AuthPlugin plugin;
+		if ("native".equals(authScheme)) {
+			plugin = new NativeAuthPlugin();
+		}
+		else if ("pam_password".equals(authScheme)) {
+			plugin = new PamPasswordAuthPlugin();
+		}
+		else {
+			throw new IllegalArgumentException("Authentication scheme not supported: " + authScheme);
+		}
 
 		var nextOp = AuthPlugin.AUTH_CLIENT_START;
 
@@ -31,7 +41,7 @@ public class AuthManager {
 			JsonNode resp = plugin.execute(comm, nextOp, req);
 			log.debug("Server response = {}", JsonUtil.toJsonString(resp));
 
-			if (comm.isLoggedIn()) {
+			if (comm.loggedIn) {
 				break;
 			}
 

@@ -22,6 +22,8 @@ class TestNativeAuthentication {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
+		XmlUtil.enablePrettyPrinting();
+		JsonUtil.enablePrettyPrinting();
 		comm = IRODSApi.rcConnect(host, port, zone, username);
 		assertNotNull(comm);
 	}
@@ -33,8 +35,6 @@ class TestNativeAuthentication {
 
 	@Test
 	void testNativeAuthentication() {
-		XmlUtil.enablePrettyPrinting();
-		JsonUtil.enablePrettyPrinting();
 		assertDoesNotThrow(() -> IRODSApi.rcAuthenticateClient(comm, "native", password));
 	}
 

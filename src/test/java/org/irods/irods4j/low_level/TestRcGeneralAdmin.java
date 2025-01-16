@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,7 +57,7 @@ class TestRcGeneralAdmin {
 	}
 
 	@Test
-	void testAddChildToResource() throws IOException, IRODSException, NoSuchAlgorithmException {
+	void testAddChildToResource() throws Exception {
 		String rescName1 = "irods4j_pt_1";
 		String rescName2 = "irods4j_pt_2";
 

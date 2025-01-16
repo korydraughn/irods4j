@@ -16,8 +16,8 @@ class TestPamAuthentication {
 	static String host = "localhost";
 	static int port = 1247;
 	static String zone = "tempZone";
-	static String username = "rods";
-	static String password = "rods";
+	static String username = "john";
+	static String password = "irods";
 	static RcComm comm;
 
 	@BeforeAll

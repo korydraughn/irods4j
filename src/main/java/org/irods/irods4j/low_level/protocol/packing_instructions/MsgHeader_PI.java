@@ -5,11 +5,16 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 public class MsgHeader_PI {
 
-	public static enum MsgType {
-		RODS_CONNECT, RODS_CS_NEG_T, RODS_VERSION, RODS_API_REQ, RODS_API_REPLY, RODS_DISCONNECT
+	public static final class MsgType {
+		public static final String RODS_CONNECT = "RODS_CONNECT";
+		public static final String RODS_CS_NEG_T = "RODS_CS_NEG_T";
+		public static final String RODS_VERSION = "RODS_VERSION";
+		public static final String RODS_API_REQ = "RODS_API_REQ";
+		public static final String RODS_API_REPLY = "RODS_API_REPLY";
+		public static final String RODS_DISCONNECT = "RODS_DISCONNECT";
 	}
 
-	public MsgType type = MsgType.RODS_CONNECT;
+	public String type = MsgType.RODS_CONNECT;
 	public int msgLen = 0;
 	public int errorLen = 0;
 	public int bsLen = 0;

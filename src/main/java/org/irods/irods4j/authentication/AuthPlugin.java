@@ -34,8 +34,18 @@ public abstract class AuthPlugin {
 	public static final String AUTH_FLOW_COMPLETE = "authentication_flow_complete";
 	public static final String AUTH_NEXT_OPERATION = "next_operation";
 
-	// TODO This one may not be necessary.
+	// TODO This one may not be necessary. It is used in the C++ implementations
+	// to control whether the plugins prompt the user for input. That is something
+	// the developer can implement ahead of time, I think. Then again, the plugin
+	// may be designed to prompt the client at certain times.
 	public static final String AUTH_FORCE_PASSWORD_PROMPT = "force_password_prompt";
+	
+	// Client Options
+	public static final String AUTH_USER_KEY = "a_user";
+	public static final String AUTH_SCHEME_KWY = "a_scheme";
+	public static final String AUTH_TTL_KEY = "a_ttl";
+	public static final String AUTH_PASSWORD_KEY = "a_pw";
+	public static final String AUTH_RESPONSE_KEY = "a_resp";
 
 	private Map<String, AuthPluginOperation> operations = new HashMap<>();
 
@@ -66,11 +76,11 @@ public abstract class AuthPlugin {
 		hdr.msgLen = msgbody.length();
 		hdr.intInfo = 110000; // New auth plugin framework API number.
 
-		Network.write(comm.getSocket(), hdr);
-		Network.writeXml(comm.getSocket(), new BinBytesBuf_PI(json));
+		Network.write(comm.socket, hdr);
+		Network.writeXml(comm.socket, new BinBytesBuf_PI(json));
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.getSocket());
+		var mh = Network.readMsgHeader_PI(comm.socket);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		// Check for errors.
@@ -78,7 +88,8 @@ public abstract class AuthPlugin {
 			throw new IRODSException(mh.intInfo, "Client request error");
 		}
 
-		var bbbuf = Network.readObject(comm.getSocket(), mh.msgLen, BinBytesBuf_PI.class);
+		var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
+//		log.debug("Received BinBytesBuf_PI: {}", bbbuf.decode());
 		var jm = JsonUtil.getJsonMapper();
 		return jm.readTree(bbbuf.decode());
 	}
