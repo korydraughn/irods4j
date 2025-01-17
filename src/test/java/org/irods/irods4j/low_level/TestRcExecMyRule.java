@@ -2,23 +2,31 @@ package org.irods.irods4j.low_level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.common.XmlUtil;
+import org.irods.irods4j.low_level.protocol.packing_instructions.ExecCmdOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ExecMyRuleInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsParamArray_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.MsParam_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RHostAddr_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.STR_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class TestRcExecMyRule {
+	
+	private static final Logger log = LogManager.getLogger();
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -31,7 +39,7 @@ class TestRcExecMyRule {
 	static void setUpBeforeClass() throws Exception {
 		comm = IRODSApi.rcConnect(host, port, zone, username);
 		assertNotNull(comm);
-		IRODSApi.authenticate(comm, "native", password);
+		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
 
 	@AfterAll
@@ -43,9 +51,10 @@ class TestRcExecMyRule {
 	void testRcExecMyRule() throws IOException {
 		XmlUtil.enablePrettyPrinting();
 		
+		var text = "Hello, irods4j! 1 + 1 =";
 		var input = new ExecMyRuleInp_PI();
 		// The rule text to execute.
-		input.myRule = "@external rule { writeLine('stdout', 'Hello, irods4j!'); }";
+		input.myRule = String.format("@external rule { writeLine('stdout', '%s 2'); }", text);
 		input.RHostAddr_PI = new RHostAddr_PI();
 		// The output variable to store the output in. This is specific to stdout.
 		input.KeyValPair_PI = new KeyValPair_PI();
@@ -56,8 +65,16 @@ class TestRcExecMyRule {
 		input.KeyValPair_PI.keyWord.add("instance_name");
 		input.KeyValPair_PI.svalue.add("irods_rule_engine_plugin-irods_rule_language-instance");
 		input.outParamDesc = "ruleExecOut";
+		// Input variables.
 		input.MsParamArray_PI = new MsParamArray_PI();
-		input.MsParamArray_PI.paramLen = 0;
+		input.MsParamArray_PI.paramLen = 1;
+		input.MsParamArray_PI.MsParam_PI = new ArrayList<>();
+		var mp = new MsParam_PI();
+		mp.label = "*x";
+		mp.type = "STR_PI";
+		mp.inOutStruct = new STR_PI();
+		((STR_PI) mp.inOutStruct).myStr = "2";
+		input.MsParamArray_PI.MsParam_PI.add(mp);
 		
 		var output = new Reference<MsParamArray_PI>();
 		
@@ -65,6 +82,12 @@ class TestRcExecMyRule {
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);
+		
+		var ruleExecOut = (ExecCmdOut_PI) output.value.MsParam_PI.get(0).inOutStruct;
+		assertEquals(ruleExecOut.status, 0);
+		log.debug("stdout buffer = {}", ruleExecOut.BinBytesBuf_PI.get(0).decode());
+		log.debug("stdout length (whitespace trimmed) = {}", ruleExecOut.BinBytesBuf_PI.get(0).decode().trim().length());
+		assertTrue((text + " 2").equals(ruleExecOut.BinBytesBuf_PI.get(0).decode().trim()));
 	}
 
 }

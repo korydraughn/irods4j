@@ -52,6 +52,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.MsParamArray_PI
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ProcStatInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RError_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_DEL_INP_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_MOD_INP_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RegReplica_PI;
@@ -95,6 +96,8 @@ public class IRODSApi {
 		public String apiVersion;
 		public int status;
 		public int cookie;
+		
+		public RError_PI rError;
 	}
 
 	public static void setApplicationName(String name) {
@@ -1241,18 +1244,28 @@ public class IRODSApi {
 
 	public static int rcExecMyRule(RcComm comm, ExecMyRuleInp_PI input, Reference<MsParamArray_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 625);
+		sendApiRequest(comm.socket, 625, input);
 
 		// Read the message header from the server.
 		var mh = Network.readMsgHeader_PI(comm.socket);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
+//		if (mh.msgLen < 0) {
+//			return mh.intInfo;
+//		}
 
 		if (mh.msgLen > 0) {
 			output.value = Network.readObject(comm.socket, mh.msgLen, MsParamArray_PI.class);
+			log.debug("Received MsParamArray_PI: {}", XmlUtil.toXmlString(output.value));
+		}
+		
+		if (mh.errorLen > 0) {
+			comm.rError = Network.readObject(comm.socket, mh.msgLen, RError_PI.class);
+		}
+
+		if (mh.bsLen > 0) {
+//			var bytes = Network.readBytes(comm.socket, mh.bsLen);
+//			System.arraycopy(bytes, 0, buffer, 0, bytes.length);
 		}
 
 		return mh.intInfo;
@@ -1260,7 +1273,7 @@ public class IRODSApi {
 
 	public static int rcProcStat(RcComm comm, ProcStatInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 625);
+		sendApiRequest(comm.socket, 690);
 
 		// Read the message header from the server.
 		var mh = Network.readMsgHeader_PI(comm.socket);
