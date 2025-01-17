@@ -1,6 +1,7 @@
 package org.irods.irods4j.low_level;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +29,7 @@ class TestXmlEncoding {
 
 	@Test
 	void test() {
+		assumeTrue(false, "Disabled until test is implemented");
 		fail("Not yet implemented");
 	}
 

@@ -2,6 +2,7 @@ package org.irods.irods4j.low_level;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class TestPamAuthentication {
+class TestPamPasswordAuthentication {
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -22,7 +23,9 @@ class TestPamAuthentication {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, zone, username);
+		XmlUtil.enablePrettyPrinting();
+		JsonUtil.enablePrettyPrinting();
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
 		assertNotNull(comm);
 	}
 
@@ -32,9 +35,8 @@ class TestPamAuthentication {
 	}
 
 	@Test
-	void testNativeAuthentication() {
-		XmlUtil.enablePrettyPrinting();
-		JsonUtil.enablePrettyPrinting();
+	void testPamPasswordAuthentication() {
+		assumeTrue(false, "Disabled until there are config options for working with a PAM-enabled server");
 		assertDoesNotThrow(() -> IRODSApi.rcAuthenticateClient(comm, "pam_password", password));
 	}
 

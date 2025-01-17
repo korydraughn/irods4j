@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.api.IRODSApi.ByteArrayReference;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
@@ -34,9 +35,9 @@ class TestStreamOperations {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, zone, username);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
 		assertNotNull(comm);
-		IRODSApi.authenticate(comm, "native", password);
+		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
 
 	@AfterAll
@@ -103,10 +104,10 @@ class TestStreamOperations {
 		readInput.l1descInx = fd;
 		readInput.len = 8192;
 
-		var readBuffer = new byte[readInput.len];
+		var readBuffer = new ByteArrayReference();
 		var bytesRead = IRODSApi.rcDataObjRead(comm, readInput, readBuffer);
 		assertTrue(bytesRead >= 3);
-		assertTrue(Arrays.equals(Arrays.copyOf(readBuffer, bytesRead), writeBuffer));
+		assertTrue(Arrays.equals(Arrays.copyOf(readBuffer.data, bytesRead), writeBuffer));
 
 		// Close the replica.
 		closeOptions = new HashMap<String, Object>();

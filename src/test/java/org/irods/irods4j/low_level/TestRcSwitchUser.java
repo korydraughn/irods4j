@@ -26,9 +26,9 @@ class TestRcSwitchUser {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, zone, username);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
 		assertNotNull(comm);
-		IRODSApi.authenticate(comm, "native", password);
+		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
 
 	@AfterAll
@@ -74,9 +74,9 @@ class TestRcSwitchUser {
 		// Connect as the local rodsadmin and remove the recently created user.
 		// This is required because we became a rodsuser, which means we lost
 		// rodsadmin level privileges.
-		var adminComm = IRODSApi.rcConnect(host, port, zone, username);
+		var adminComm = IRODSApi.rcConnect(host, port, username, zone, null, null);
 		assertNotNull(adminComm);
-		IRODSApi.authenticate(adminComm, "native", password);
+		IRODSApi.rcAuthenticateClient(adminComm, "native", password);
 
 		// Remove the rodsuser.
 		var removeUserInput = new GeneralAdminInp_PI();

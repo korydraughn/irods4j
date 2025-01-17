@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.api.IRODSApi.ByteArrayReference;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.api.IRODSKeywords;
@@ -209,9 +210,9 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IOException
 	 * @throws IRODSException
 	 */
-	public int read(byte[] buffer, int count) throws IOException, IRODSException {
+	public int read(ByteArrayReference buffer, int count) throws IOException, IRODSException {
 		throwIfInvalidL1Descriptor(fd);
-		throwIfInvalidBufferSize(buffer.length, count);
+		throwIfInvalidBufferSize(buffer.data.length, count);
 
 		var input = new OpenedDataObjInp_PI();
 		input.l1descInx = fd;

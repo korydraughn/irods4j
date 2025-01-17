@@ -4,12 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.security.KeyStore;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -96,8 +92,12 @@ public class IRODSApi {
 		public String apiVersion;
 		public int status;
 		public int cookie;
-		
+
 		public RError_PI rError;
+	}
+
+	public static class ByteArrayReference {
+		public byte[] data;
 	}
 
 	public static void setApplicationName(String name) {
@@ -152,8 +152,30 @@ public class IRODSApi {
 		Network.writeBytes(socket, bytes);
 	}
 
-	public static RcComm rcConnect(String host, int port, String zone, String username)
-			throws Exception {
+	private static <T> int readServerResponse(RcComm comm, Class<T> targetClass, Reference<T> output,
+			ByteArrayReference bsBuffer) throws IOException {
+		var mh = Network.readMsgHeader_PI(comm.socket);
+		if (log.isDebugEnabled()) {
+			log.debug("Received MsgHeader_PI:\n{}", XmlUtil.toXmlString(mh));
+		}
+
+		if (mh.msgLen > 0 && null != targetClass) {
+			output.value = Network.readObject(comm.socket, mh.msgLen, targetClass);
+		}
+
+		if (mh.errorLen > 0) {
+			comm.rError = Network.readObject(comm.socket, mh.msgLen, RError_PI.class);
+		}
+
+		if (mh.bsLen > 0 && null != bsBuffer) {
+			bsBuffer.data = Network.readBytes(comm.socket, mh.bsLen);
+		}
+
+		return mh.intInfo;
+	}
+
+	public static RcComm rcConnect(String host, int port, String clientUsername, String clientUserZone,
+			String proxyUsername, String proxyUserZone) throws Exception {
 		if (null == host || host.isEmpty()) {
 			throw new IllegalArgumentException("Host is null or empty");
 		}
@@ -162,12 +184,22 @@ public class IRODSApi {
 			throw new IllegalArgumentException("Port is less than or equal to 0");
 		}
 
-		if (null == zone || zone.isEmpty()) {
-			throw new IllegalArgumentException("Zone is null or empty");
+		if (null == clientUsername || clientUsername.isEmpty()) {
+			throw new IllegalArgumentException("Client username is null or empty");
 		}
 
-		if (null == username || username.isEmpty()) {
-			throw new IllegalArgumentException("Username is null or empty");
+		if (null == clientUserZone || clientUserZone.isEmpty()) {
+			throw new IllegalArgumentException("Client zone is null or empty");
+		}
+
+		// iRODS expects the client and proxy information to be identical if
+		// the proxy user info is not defined.
+		if (null == proxyUsername) {
+			proxyUsername = clientUsername;
+		}
+
+		if (null == proxyUserZone) {
+			proxyUserZone = clientUserZone;
 		}
 
 		RcComm comm = new RcComm();
@@ -176,10 +208,10 @@ public class IRODSApi {
 		// Create the StartupPack message.
 		// This is how a connection to iRODS is always initiated.
 		var sp = new StartupPack_PI();
-		sp.clientUser = comm.clientUsername = username;
-		sp.clientRcatZone = comm.clientUserZone = zone;
-		sp.proxyUser = comm.proxyUsername = username;
-		sp.proxyRcatZone = comm.proxyUserZone = zone;
+		sp.clientUser = comm.clientUsername = clientUsername;
+		sp.clientRcatZone = comm.clientUserZone = clientUserZone;
+		sp.proxyUser = comm.proxyUsername = proxyUsername;
+		sp.proxyRcatZone = comm.proxyUserZone = proxyUserZone;
 		sp.option = appName + "request_server_negotiation";
 		var msgbody = XmlUtil.toXmlString(sp);
 
@@ -207,7 +239,7 @@ public class IRODSApi {
 		// choice for secure communication.
 		var csneg = Network.readObject(comm.socket, mh.msgLen, CS_NEG_PI.class);
 		log.debug("Received CS_NEG_PI: {}", XmlUtil.toXmlString(csneg));
-		
+
 		// Check for negotiation errors.
 		// 1 = CS_NEG_STATUS_SUCCESS
 		// 0 = CS_NEG_STATUS_FAILURE
@@ -216,30 +248,27 @@ public class IRODSApi {
 			// TODO Handle error. Server may be in a bad state.
 			log.error("Client-Server negotiation error: CS_NEG_STATUS={}", csneg.status);
 		}
-		
+
 		// Get the client's negotiation policy and resolve it against
-		// the server's policy. 
+		// the server's policy.
 		// TODO This part MUST be configurable by the client (e.g. read from
 		// a config file).
 		// TODO For now, let's just try to meet the server's demands. The
 		// solution is to implement the negotiate function in
 		// irods_client_negotiation.cpp#L268 from the main branch.
-		var closeSocket = false; 
+		var closeSocket = false;
 		if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(csneg.result)) {
 			log.debug("Client-Server negotiation will use TLS");
 			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
 			comm.usingTLS = true;
-		}
-		else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(csneg.result)) {
+		} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(csneg.result)) {
 			log.debug("Client-Server negotiation will use TLS");
 			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
 			comm.usingTLS = true;
-		}
-		else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(csneg.result)) {
+		} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(csneg.result)) {
 			log.debug("Client-Server negotiation will not use TLS");
 			csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
-		}
-		else {
+		} else {
 			// TODO Handle error. Unknown negotiation result.
 			// Send the server a CS_NEG_PI request telling it the
 			// negotiation failed. Then close the socket and return
@@ -258,7 +287,7 @@ public class IRODSApi {
 		// Read the message header from the server.
 		mh = Network.readMsgHeader_PI(comm.socket);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-		
+
 		// TODO Does the server automatically close the socket after a
 		// failed client-server negotiation attempt?
 //		if (closeSocket) {
@@ -276,7 +305,7 @@ public class IRODSApi {
 		comm.relVersion = vers.relVersion;
 		comm.status = vers.status;
 		comm.cookie = vers.cookie;
-		
+
 		// TODO In the C implementation, this is where the network_plugin
 		// is instantiated and the decision to use TLS happens. That decision
 		// is based on the negotiation results, which are stored in the RcComm.
@@ -287,18 +316,18 @@ public class IRODSApi {
 
 		return comm;
 	}
-	
+
 	private static void enableTLS(RcComm comm) throws Exception {
 		if (comm.secure) {
 			log.debug("SSL/TLS is already in use.");
 			return;
 		}
-		
+
 		if (!comm.usingTLS) {
 			log.debug("Skipping enabling of SSL/TLS communication.");
 			return;
 		}
-		
+
 		// TODO The code below is needed by the PamPasswordAuthPlugin.
 		// for when the client isn't using TLS initially, but wants to
 		// use PAM.
@@ -336,7 +365,7 @@ public class IRODSApi {
 		log.debug("Supported SSL/TLS protocols: {}", Arrays.toString(comm.sslSocket.getSupportedProtocols()));
 		comm.sslSocket.startHandshake();
 		log.debug("Connected securely using self-signed certificate.");
-		
+
 		// See ssl.cpp in irods/irods to understand the following sequence of
 		// operations. The code below follows ssl_client_start() and ssl_agent_start().
 
@@ -366,11 +395,11 @@ public class IRODSApi {
 		bbuf.buf = key;
 		var msgbody = XmlUtil.toXmlString(bbuf);
 
-	    mh.type = "SHARED_SECRET";
-	    mh.msgLen = msgbody.length();
-	    mh.errorLen = 0;
-	    mh.bsLen = 0;
-	    mh.intInfo = 0;
+		mh.type = "SHARED_SECRET";
+		mh.msgLen = msgbody.length();
+		mh.errorLen = 0;
+		mh.bsLen = 0;
+		mh.intInfo = 0;
 
 		Network.write(comm.sslSocket, mh);
 		Network.writeXml(comm.sslSocket, bbuf);
@@ -388,7 +417,7 @@ public class IRODSApi {
 		// function being executed multiple times.
 		comm.secure = true;
 	}
-	
+
 	// TODO Consider removing this function.
 	private static int rcSslStart(RcComm comm) throws IOException {
 		var input = new SSLStartInp_PI();
@@ -428,387 +457,139 @@ public class IRODSApi {
 		AuthManager.authenticateClient(comm, authScheme, input);
 	}
 
-	public static void authenticate(RcComm comm, String authScheme, String password)
-			throws IOException, NoSuchAlgorithmException, IRODSException {
-		var msg = new HashMap<String, Object>() {
-			private static final long serialVersionUID = 1L;
-
-			{
-				put("a_ttl", "0");
-				put("force_password_prompt", Boolean.TRUE);
-				put("next_operation", "auth_agent_auth_request");
-				put("scheme", "native");
-				put("user_name", comm.clientUsername);
-				put("zone_name", comm.clientUserZone);
-			}
-		};
-		var json = JsonUtil.toJsonString(msg);
-		var msgbody = XmlUtil.toXmlString(new BinBytesBuf_PI(json));
-
-		var hdr = new MsgHeader_PI();
-		hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
-		hdr.msgLen = msgbody.length();
-		hdr.intInfo = 110000; // New auth plugin framework API number.
-
-		Network.write(comm.socket, hdr);
-		Network.writeXml(comm.socket, new BinBytesBuf_PI(json));
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// Check for errors.
-		if (mh.intInfo < 0) {
-			throw new IRODSException(mh.intInfo, "Authentication failure");
-		}
-
-		var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-		log.debug("Received BinBytesBuf_PI: {}", XmlUtil.toXmlString(bbbuf));
-		log.debug("BinBytesBuf_PI contents: {}", bbbuf.decode());
-
-		var tr = new HashMap<String, Object>();
-		var jsonContent = JsonUtil.fromJsonString(bbbuf.decode(), tr.getClass());
-		var requestResult = (String) jsonContent.get("request_result");
-		var signature = requestResult.substring(0, 16);
-		log.debug("signature = {}", signature);
-		log.debug("signature length = {}", signature.length());
-
-		// Generate the MD5 hash for challenge response.
-		var pwsb = new StringBuilder();
-		pwsb.append(password);
-		pwsb.setLength(50); // Pad the string with null bytes until it has a length of 50 bytes.
-		var digest = MessageDigest.getInstance("md5");
-		digest.update(requestResult.getBytes());
-		digest.update(pwsb.toString().getBytes());
-		var challengeResponse = Base64.getEncoder().encodeToString(digest.digest());
-		log.debug("challengeResponse = {}", challengeResponse);
-
-		msg.put("next_operation", "auth_agent_auth_response");
-		msg.put("digest", challengeResponse);
-
-		json = JsonUtil.toJsonString(msg);
-		bbbuf = new BinBytesBuf_PI(json);
-		msgbody = XmlUtil.toXmlString(bbbuf);
-		hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
-		hdr.msgLen = msgbody.length();
-		hdr.intInfo = 110000; // New auth plugin framework API number.
-		Network.write(comm.socket, hdr);
-		Network.writeXml(comm.socket, bbbuf);
-
-		// Read the message header from the server.
-		mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// Check for errors.
-		if (mh.intInfo < 0) {
-			throw new IRODSException(mh.intInfo, "Authentication failure");
-		}
-
-		bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-		log.debug("Received BinBytesBuf_PI: {}", XmlUtil.toXmlString(bbbuf));
-		log.debug("BinBytesBuf_PI contents: {}", bbbuf.decode());
-
-		comm.loggedIn = true;
-
-		log.debug("Authentication Successful!");
-	}
-
 	public static int rcObjStat(RcComm comm, DataObjInp_PI input, Reference<RodsObjStat_PI> output) throws IOException {
 		sendApiRequest(comm.socket, 633, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.intInfo < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, RodsObjStat_PI.class);
-		}
-
-		if (mh.errorLen > 0) {
-			// TODO
-		}
-
-		if (mh.bsLen > 0) {
-			// TODO
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, RodsObjStat_PI.class, output, null);
 	}
 
 	public static int rcGenQuery2(RcComm comm, Genquery2Input_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.socket, 10221, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.intInfo < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<STR_PI>();
+		var ec = readServerResponse(comm, STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
 		}
-
-		var str = Network.readObject(comm.socket, mh.msgLen, STR_PI.class);
-		output.value = str.myStr;
-
-		return mh.intInfo;
+		return ec;
 	}
 
-	public static int rcReplicaOpen(RcComm comm, DataObjInp_PI input, Reference<String> l1descInfo) throws IOException {
+	public static int rcReplicaOpen(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.socket, 20003, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// Check for errors. We should never see a L1descInx less than 3.
-		// If we do, something horrible has happened on the server side.
-		if (mh.intInfo < 3) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
-
-		// Capture the L1descInx (i.e. the iRODS file descriptor) and
-		// l1desc information.
-		var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-		l1descInfo.value = bbbuf.decode();
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcReplicaTruncate(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.socket, 802, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<STR_PI>();
+		var ec = readServerResponse(comm, STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
 		}
-
-		if (mh.msgLen > 0) {
-			var tmp = Network.readObject(comm.socket, mh.msgLen, STR_PI.class);
-			output.value = tmp.myStr;
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcDataObjLseek(RcComm comm, OpenedDataObjInp_PI input, Reference<FileLseekOut_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 674, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// Check for errors.
-		if (mh.intInfo < 0) {
-			return mh.intInfo;
-		}
-
-		output.value = Network.readObject(comm.socket, mh.msgLen, FileLseekOut_PI.class);
-
-		// For a read operation, remember the error code represents the
-		// total number of bytes read.
-		return mh.intInfo;
+		return readServerResponse(comm, FileLseekOut_PI.class, output, null);
 	}
 
-	public static int rcDataObjRead(RcComm comm, OpenedDataObjInp_PI input, byte[] buffer) throws IOException {
+	public static int rcDataObjRead(RcComm comm, OpenedDataObjInp_PI input, ByteArrayReference byteArray)
+			throws IOException {
 		sendApiRequest(comm.socket, 675, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// Check for errors.
-		if (mh.intInfo < 0) {
-			return mh.intInfo;
-		}
-
-		// Check to see if the byte stream contains data. If the server
-		// returns any data via the byte stream, it will appear directly
-		// after the MsgHeader_PI message.
-		if (mh.bsLen > 0) {
-			var bytes = Network.readBytes(comm.socket, mh.bsLen);
-			System.arraycopy(bytes, 0, buffer, 0, bytes.length);
-		}
-
-		// For a read operation, remember the error code represents the
-		// total number of bytes read.
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, byteArray);
 	}
 
 	public static int rcDataObjWrite(RcComm comm, OpenedDataObjInp_PI input, byte[] buffer) throws IOException {
 		sendApiRequest(comm.socket, 676, input, buffer);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		// For a write operation, remember the error code represents the
-		// total number of bytes written.
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcReplicaClose(RcComm comm, String closeOptions) throws IOException {
 		var input = new BinBytesBuf_PI(closeOptions);
-
 		sendApiRequest(comm.socket, 20004, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcAtomicApplyMetadataOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
 		var bbbuf = new BinBytesBuf_PI(input);
-
 		sendApiRequest(comm.socket, 20002, bbbuf);
 
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
 
-		if (mh.msgLen > 0) {
-			bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-			output.value = bbbuf.decode();
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcAtomicApplyAclOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
 		var bbbuf = new BinBytesBuf_PI(input);
-
 		sendApiRequest(comm.socket, 20005, bbbuf);
 
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
 
-		if (mh.msgLen > 0) {
-			bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-			output.value = bbbuf.decode();
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcTouch(RcComm comm, String input) throws IOException {
 		var bbbuf = new BinBytesBuf_PI(input);
-
 		sendApiRequest(comm.socket, 20007, bbbuf);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcGetGridConfigurationValue(RcComm comm, GridConfigurationInp_PI input,
 			Reference<GridConfigurationOut_PI> output) throws IOException {
 		sendApiRequest(comm.socket, 20009, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, GridConfigurationOut_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, GridConfigurationOut_PI.class, output, null);
 	}
 
 	public static int rcSetGridConfigurationValue(RcComm comm, GridConfigurationInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 20010, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcSetDelayServerMigrationInfo(RcComm comm, DelayServerMigrationInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 20011, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcGetDelayRuleInfo(RcComm comm, String input, Reference<String> output) throws IOException {
 		var strPI = new STR_PI();
 		strPI.myStr = input;
-
 		sendApiRequest(comm.socket, 20013, strPI);
 
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
 
-		if (mh.msgLen > 0) {
-			var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-			output.value = bbbuf.decode();
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcGetFileDescriptorInfo(RcComm comm, String input, Reference<String> output) throws IOException {
 		var bbbuf = new BinBytesBuf_PI(input);
-
 		sendApiRequest(comm.socket, 20000, bbbuf);
 
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
 
-		if (mh.msgLen > 0) {
-			bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-			output.value = bbbuf.decode();
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcSwitchUser(RcComm comm, SwitchUserInp_PI input) throws IOException {
@@ -829,12 +610,9 @@ public class IRODSApi {
 		}
 
 		sendApiRequest(comm.socket, 20012, input);
+		var ec = readServerResponse(comm, null, null, null);
 
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.intInfo == 0) {
+		if (0 == ec) {
 			comm.clientUsername = input.username;
 			comm.clientUserZone = input.zone;
 
@@ -845,522 +623,233 @@ public class IRODSApi {
 			}
 		}
 
-		return mh.intInfo;
+		return ec;
 	}
 
-	public static int rcCheckAuthCredentials(RcComm comm, DataObjInp_PI input, Reference<Integer> correct)
+	public static int rcCheckAuthCredentials(RcComm comm, DataObjInp_PI input, Reference<Integer> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 800, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<INT_PI>();
+		var ec = readServerResponse(comm, INT_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myInt;
 		}
-
-		if (mh.msgLen > 0) {
-			var i = Network.readObject(comm.socket, mh.msgLen, INT_PI.class);
-			correct.value = i.myInt;
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	// TODO Should this API be exposed to clients?
 	public static int rcRegisterPhysicalPath(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 20008, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<BinBytesBuf_PI>();
+		var ec = readServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.decode();
 		}
-
-		if (mh.msgLen > 0) {
-			var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-			output.value = bbbuf.decode();
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcModAVUMetadata(RcComm comm, ModAVUMetadataInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 706, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModAccessControl(RcComm comm, ModAccessControlInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 707, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModDataObjMeta(RcComm comm, ModDataObjMeta_PI input) throws IOException {
 		sendApiRequest(comm.socket, 622, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjectModifyInfo(RcComm comm, ModDataObjMeta_PI input) throws IOException {
 		sendApiRequest(comm.socket, 20001, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjRename(RcComm comm, DataObjCopyInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 627, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjCopy(RcComm comm, DataObjCopyInp_PI input, Reference<TransferStat_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 696, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, TransferStat_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, TransferStat_PI.class, output, null);
 	}
 
 	public static int rcDataObjRepl(RcComm comm, DataObjInp_PI input, Reference<TransferStat_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 695, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, TransferStat_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, TransferStat_PI.class, output, null);
 	}
 
 	public static int rcDataObjCreate(RcComm comm, DataObjInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 601, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjChksum(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.socket, 629, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<STR_PI>();
+		var ec = readServerResponse(comm, STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
 		}
-
-		if (mh.msgLen > 0) {
-			var tmp = Network.readObject(comm.socket, mh.msgLen, STR_PI.class);
-			output.value = tmp.myStr;
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcDataObjUnlink(RcComm comm, DataObjInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 615, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjTrim(RcComm comm, DataObjInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 632, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDelayRuleLock(RcComm comm, DelayRuleLockInput_PI input) throws IOException {
 		sendApiRequest(comm.socket, 10222, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDelayRuleUnlock(RcComm comm, DelayRuleUnlockInput_PI input) throws IOException {
 		sendApiRequest(comm.socket, 10223, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcCollCreate(RcComm comm, CollInpNew_PI input) throws IOException {
 		sendApiRequest(comm.socket, 681, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModColl(RcComm comm, CollInpNew_PI input) throws IOException {
 		sendApiRequest(comm.socket, 680, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcOpenCollection(RcComm comm, CollInpNew_PI input) throws IOException {
 		sendApiRequest(comm.socket, 678, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcReadCollection(RcComm comm, int handle, Reference<CollEnt_PI> output) throws IOException {
 		var input = new INT_PI();
 		input.myInt = handle;
 		sendApiRequest(comm.socket, 713, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, CollEnt_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, CollEnt_PI.class, output, null);
 	}
 
 	public static int rcCloseCollection(RcComm comm, int handle) throws IOException {
 		var input = new INT_PI();
 		input.myInt = handle;
 		sendApiRequest(comm.socket, 661, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcRmColl(RcComm comm, CollInpNew_PI input, Reference<CollOprStat_PI> output) throws IOException {
 		sendApiRequest(comm.socket, 679, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, CollOprStat_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, CollOprStat_PI.class, output, null);
 	}
 
 	public static int rcTicketAdmin(RcComm comm, TicketAdminInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 723, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcUnregDataObj(RcComm comm, UnregDataObj_PI input) throws IOException {
 		sendApiRequest(comm.socket, 620, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcUserAdmin(RcComm comm, UserAdminInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 714, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcSpecificQuery(RcComm comm, SpecificQueryInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 722, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, GenQueryOut_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcGetResourceInfoForOperation(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 10220, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<STR_PI>();
+		var ec = readServerResponse(comm, STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
 		}
-
-		if (mh.msgLen > 0) {
-			var tmp = Network.readObject(comm.socket, mh.msgLen, STR_PI.class);
-			output.value = tmp.myStr;
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcZoneReport(RcComm comm, SpecificQueryInp_PI input, Reference<BytesBuf_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 10205, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, BytesBuf_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, BytesBuf_PI.class, output, null);
 	}
 
 	public static int rcGetMiscSvrInfo(RcComm comm, Reference<MiscSvrInfo_PI> output) throws IOException {
 		sendApiRequest(comm.socket, 700);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, MiscSvrInfo_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, MiscSvrInfo_PI.class, output, null);
 	}
 
 	public static int rcGeneralAdmin(RcComm comm, GeneralAdminInp_PI input) throws IOException {
 		sendApiRequest(comm.socket, 701, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcExecMyRule(RcComm comm, ExecMyRuleInp_PI input, Reference<MsParamArray_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 625, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-//		if (mh.msgLen < 0) {
-//			return mh.intInfo;
-//		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, MsParamArray_PI.class);
-			log.debug("Received MsParamArray_PI: {}", XmlUtil.toXmlString(output.value));
-		}
-		
-		if (mh.errorLen > 0) {
-			comm.rError = Network.readObject(comm.socket, mh.msgLen, RError_PI.class);
-		}
-
-		if (mh.bsLen > 0) {
-//			var bytes = Network.readBytes(comm.socket, mh.bsLen);
-//			System.arraycopy(bytes, 0, buffer, 0, bytes.length);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, MsParamArray_PI.class, output, null);
 	}
 
 	public static int rcProcStat(RcComm comm, ProcStatInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 690);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, GenQueryOut_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcRuleExecSubmit(RcComm comm, RULE_EXEC_DEL_INP_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 623, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
+		var outputPI = new Reference<IRODS_STR_PI>();
+		var ec = readServerResponse(comm, IRODS_STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
 		}
-
-		if (mh.msgLen > 0) {
-			var tmp = Network.readObject(comm.socket, mh.msgLen, IRODS_STR_PI.class);
-			output.value = tmp.myStr;
-		}
-
-		return mh.intInfo;
+		return ec;
 	}
 
 	public static int rcRuleExecMod(RcComm comm, RULE_EXEC_MOD_INP_PI input) throws IOException {
 		sendApiRequest(comm.socket, 708, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	public static int rcRuleExecDel(RcComm comm, RULE_EXEC_DEL_INP_PI input) throws IOException {
 		sendApiRequest(comm.socket, 624, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
 	// TODO This API is likely for server-side use only due to it only being invoked
 	// within the server. Consider removing this.
-	public static int rcRegReplica(RcComm comm, RegReplica_PI input) throws IOException {
+	private static int rcRegReplica(RcComm comm, RegReplica_PI input) throws IOException {
 		sendApiRequest(comm.socket, 621, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		return mh.intInfo;
+		return readServerResponse(comm, null, null, null);
 	}
 
-	// TODO This API is not used in server at all. We should probably deprecate it or remove
+	// TODO This API is not used in server at all. We should probably deprecate it
+	// or remove
 	// it from the public interface. Consider removing this.
-	public static int rcRegDataOb(RcComm comm, DataObjInfo_PI input, Reference<DataObjInfo_PI> output)
+	private static int rcRegDataOb(RcComm comm, DataObjInfo_PI input, Reference<DataObjInfo_PI> output)
 			throws IOException {
 		sendApiRequest(comm.socket, 619, input);
-
-		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		if (mh.msgLen < 0) {
-			return mh.intInfo;
-		}
-
-		if (mh.msgLen > 0) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, DataObjInfo_PI.class);
-		}
-
-		return mh.intInfo;
+		return readServerResponse(comm, DataObjInfo_PI.class, output, null);
 	}
 
 }
