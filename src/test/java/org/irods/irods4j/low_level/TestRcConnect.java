@@ -2,8 +2,12 @@ package org.irods.irods4j.low_level;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RErrMsg_PI;
 import org.junit.jupiter.api.Test;
 
 class TestRcConnect {
@@ -17,6 +21,25 @@ class TestRcConnect {
 		
 		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, null, null, null));
 		assertNotNull(comm);
+		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
+	}
+	
+	@Test
+	void testRcConnectCapturesErrorInfoInRErrMsgObject() {
+		assumeTrue(false, "Need to investigate how to trigger this case");
+
+		// TODO Figure out how to trigger an error that gets captured by rcConnect.
+		final var host = "localhost";
+		final var port = 1247;
+//		final var zone = "tempZone";
+//		final var username = "bogus";
+		final var zone = "x";
+		final var username = "x";
+
+		var errInfo = new RErrMsg_PI();
+		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, null, null, errInfo));
+		assertNull(comm);
+		assertTrue(errInfo.status < 0);
 		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
 	}
 
