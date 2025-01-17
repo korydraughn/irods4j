@@ -10,7 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.high_level.io.DataObjectStream;
+import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,7 +45,7 @@ class TestDataObjectStream {
 				.get("/", zone, "home", username, "testDataObjectStreamCapturesReplicaNumberAndReplicaToken.txt")
 				.toString();
 
-		var in = new DataObjectStream(comm);
+		var in = new IRODSDataObjectStream(comm);
 		in.open(logicalPath, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 		assertTrue(in.isOpen());
 

@@ -18,7 +18,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjIn
 /**
  * 
  */
-public class DataObjectStream implements AutoCloseable {
+public class IRODSDataObjectStream implements AutoCloseable {
 
 	private RcComm comm;
 	private int fd = -1;
@@ -47,7 +47,7 @@ public class DataObjectStream implements AutoCloseable {
 	 * 
 	 * @param comm
 	 */
-	public DataObjectStream(RcComm comm) {
+	public IRODSDataObjectStream(RcComm comm) {
 		this.comm = comm;
 	}
 

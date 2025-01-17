@@ -1,16 +1,7 @@
-# iRODS4j
+# irods4j
 
-A Java library for communicating with an iRODS server.
+**IMPORTANT: This project is not considered stable yet and may experience changes.**
 
-This library does not aim to implement all operations supported by the iRODS server. It is designed to provide support for operations needed for building client applications.
+A Java client library designed for iRODS 4.3+.
 
-## Basic Features
-
-- [ ] Data object operations
-- [ ] Collection operations
-- [ ] Metadata operations
-- [ ] Resource operations
-- [ ] User operations
-- [ ] Group operations
-- [ ] GenQuery1
-- [x] GenQuery2
+This library provides a low-level API which exposes data types and functions seen in the iRODS C API. A few high-level libraries are provided to ease use as well.
