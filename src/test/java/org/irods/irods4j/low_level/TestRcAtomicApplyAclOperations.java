@@ -27,7 +27,7 @@ class TestRcAtomicApplyAclOperations {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}

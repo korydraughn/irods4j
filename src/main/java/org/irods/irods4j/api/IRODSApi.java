@@ -48,6 +48,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.MsParamArray_PI
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ProcStatInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.RErrMsg_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RError_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_DEL_INP_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RULE_EXEC_MOD_INP_PI;
@@ -175,7 +176,7 @@ public class IRODSApi {
 	}
 
 	public static RcComm rcConnect(String host, int port, String clientUsername, String clientUserZone,
-			String proxyUsername, String proxyUserZone) throws Exception {
+			String proxyUsername, String proxyUserZone, RErrMsg_PI errorInfo) throws Exception {
 		if (null == host || host.isEmpty()) {
 			throw new IllegalArgumentException("Host is null or empty");
 		}
@@ -229,7 +230,11 @@ public class IRODSApi {
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		if (mh.intInfo < 0) {
-			throw new IRODSException(mh.intInfo, "StartupPack failure");
+			if (null != errorInfo) {
+				errorInfo.status = mh.intInfo;
+				errorInfo.msg = "StartupPack error";
+			}
+			return null;
 		}
 
 		// Negotiation
@@ -295,7 +300,11 @@ public class IRODSApi {
 //		}
 
 		if (mh.intInfo < 0) {
-			throw new IRODSException(mh.intInfo, "Client-Server negotiation failure");
+			if (null != errorInfo) {
+				errorInfo.status = mh.intInfo;
+				errorInfo.msg = "Client-Server negotiation error";
+			}
+			return null;
 		}
 
 		// Capture the server version information.
@@ -850,6 +859,16 @@ public class IRODSApi {
 			throws IOException {
 		sendApiRequest(comm.socket, 619, input);
 		return readServerResponse(comm, DataObjInfo_PI.class, output, null);
+	}
+
+	public static int rcGetLibraryFeatures(RcComm comm, Reference<String> output) throws IOException {
+		sendApiRequest(comm.socket, 801);
+		var outputPI = new Reference<STR_PI>();
+		var ec = readServerResponse(comm, STR_PI.class, outputPI, null);
+		if (null != outputPI.value) {
+			output.value = outputPI.value.myStr;
+		}
+		return ec;
 	}
 
 }

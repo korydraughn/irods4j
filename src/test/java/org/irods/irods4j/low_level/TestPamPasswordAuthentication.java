@@ -25,7 +25,7 @@ class TestPamPasswordAuthentication {
 	static void setUpBeforeClass() throws Exception {
 		XmlUtil.enablePrettyPrinting();
 		JsonUtil.enablePrettyPrinting();
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm);
 	}
 

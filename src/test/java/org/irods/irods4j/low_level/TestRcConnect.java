@@ -15,7 +15,7 @@ class TestRcConnect {
 		final var zone = "tempZone";
 		final var username = "rods";
 		
-		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, null, null));
+		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, null, null, null));
 		assertNotNull(comm);
 		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
 	}

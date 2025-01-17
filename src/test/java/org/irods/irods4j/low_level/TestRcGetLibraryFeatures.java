@@ -1,17 +1,20 @@
 package org.irods.irods4j.low_level;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.common.JsonUtil;
-import org.irods.irods4j.common.XmlUtil;
+import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.common.Reference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class TestNativeAuthentication {
+class TestRcGetLibraryFeatures {
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -22,10 +25,9 @@ class TestNativeAuthentication {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		XmlUtil.enablePrettyPrinting();
-		JsonUtil.enablePrettyPrinting();
 		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm);
+		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
 
 	@AfterAll
@@ -34,8 +36,13 @@ class TestNativeAuthentication {
 	}
 
 	@Test
-	void testNativeAuthentication() {
-		assertDoesNotThrow(() -> IRODSApi.rcAuthenticateClient(comm, "native", password));
+	void testRcGetLibraryFeatures() throws IOException, IRODSException {
+		var output = new Reference<String>();
+		var ec = IRODSApi.rcGetLibraryFeatures(comm, output);
+		assertEquals(ec, 0);
+		assertNotNull(output);
+		assertNotNull(output.value);
+		assertTrue(output.value.contains("IRODS_LIBRARY_FEATURE_GENQUERY2"));
 	}
 
 }

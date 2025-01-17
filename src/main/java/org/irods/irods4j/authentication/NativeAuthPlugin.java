@@ -58,7 +58,8 @@ public class NativeAuthPlugin extends AuthPlugin {
 		// The user could enter a long password which gets truncated!
 		passwordSb.append(context.get("password").asText());
 		passwordSb.setLength(MAX_PASSWORD_LEN);
-		log.debug("passwordSb string = [{}]", passwordSb.toString());
+		// TODO DO NOT LOG PASSWORDS!
+//		log.debug("passwordSb string = [{}]", passwordSb.toString());
 
 		// TODO Compute the session signature and store it in the RcComm.
 		// See plugins/auth/src/native.cpp for details

@@ -31,7 +31,7 @@ class TestRcObjStat {
 		JsonUtil.enablePrettyPrinting();
 		XmlUtil.enablePrettyPrinting();
 
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}

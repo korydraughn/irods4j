@@ -23,7 +23,7 @@ class TestRcGeneralAdmin {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
@@ -75,7 +75,7 @@ class TestRcGeneralAdmin {
 		}
 
 		// Create a new connection so the resources can be seen/used.
-		RcComm comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		RcComm comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", password);
 
@@ -89,7 +89,7 @@ class TestRcGeneralAdmin {
 		
 		// Refresh the connection so the resources can be seen/used.
 		IRODSApi.rcDisconnect(comm1);
-		comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null);
+		comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", password);
 
