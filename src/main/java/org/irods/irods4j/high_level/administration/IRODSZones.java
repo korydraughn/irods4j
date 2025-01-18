@@ -58,8 +58,12 @@ public class IRODSZones {
 	}
 
 	public static void addZone(RcComm comm, String zoneName, ZoneOptions options) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		if (null == zoneName || zoneName.isEmpty()) {
-			throw new IllegalArgumentException("Zone name is empty");
+			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
 		var input = new GeneralAdminInp_PI();
@@ -67,8 +71,8 @@ public class IRODSZones {
 		input.arg1 = "zone";
 		input.arg2 = zoneName;
 		input.arg3 = "remote";
-		input.arg4 = options.connectionInfo;
-		input.arg5 = options.comment;
+		input.arg4 = (null == options.connectionInfo) ? "" : options.connectionInfo;
+		input.arg5 = (null == options.comment) ? "" : options.comment;
 
 		var ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
@@ -77,8 +81,12 @@ public class IRODSZones {
 	}
 
 	public static void removeZone(RcComm comm, String zoneName) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		if (null == zoneName || zoneName.isEmpty()) {
-			throw new IllegalArgumentException("Zone name is empty");
+			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
 		var input = new GeneralAdminInp_PI();
@@ -94,8 +102,16 @@ public class IRODSZones {
 
 	public static void modifyZone(RcComm comm, String zoneName, ZoneProperty property)
 			throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		if (null == zoneName || zoneName.isEmpty()) {
-			throw new IllegalArgumentException("Zone name is empty");
+			throw new IllegalArgumentException("Zone name is null or empty");
+		}
+
+		if (null == property) {
+			throw new IllegalArgumentException("Zone property is null");
 		}
 
 		if (property instanceof ZoneNameProperty p) {
@@ -162,8 +178,12 @@ public class IRODSZones {
 	}
 
 	public static boolean zoneExists(RcComm comm, String zoneName) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		if (null == zoneName || zoneName.isEmpty()) {
-			throw new IllegalArgumentException("Zone name is empty");
+			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
 		var input = new Genquery2Input_PI();
@@ -184,8 +204,12 @@ public class IRODSZones {
 	}
 
 	public static Optional<ZoneInfo> zoneInfo(RcComm comm, String zoneName) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		if (null == zoneName || zoneName.isEmpty()) {
-			throw new IllegalArgumentException("Zone name is empty");
+			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
 		var input = new Genquery2Input_PI();
