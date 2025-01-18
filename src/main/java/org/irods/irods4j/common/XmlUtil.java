@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.irods.irods4j.low_level.util.NullSerializer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -26,7 +27,7 @@ public class XmlUtil {
 		xm = other;
 		return old;
 	}
-	
+
 	public static XmlMapper getXmlMapper() {
 		return xm;
 	}
@@ -48,8 +49,17 @@ public class XmlUtil {
 		return xm.readValue(data, clazz);
 	}
 
+	public static <T> T fromXmlString(String data, TypeReference<T> typeRef)
+			throws JsonMappingException, JsonProcessingException {
+		return xm.readValue(data, typeRef);
+	}
+
 	public static <T> T fromBytes(byte[] data, Class<T> clazz) throws IOException {
 		return xm.readValue(data, clazz);
+	}
+
+	public static <T> T fromBytes(byte[] data, TypeReference<T> typeRef) throws IOException {
+		return xm.readValue(data, typeRef);
 	}
 
 }

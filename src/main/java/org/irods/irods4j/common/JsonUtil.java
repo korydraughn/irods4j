@@ -3,6 +3,7 @@ package org.irods.irods4j.common;
 import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -16,7 +17,7 @@ public class JsonUtil {
 		om = other;
 		return old;
 	}
-	
+
 	public static ObjectMapper getJsonMapper() {
 		return om;
 	}
@@ -38,8 +39,17 @@ public class JsonUtil {
 		return om.readValue(data, clazz);
 	}
 
+	public static <T> T fromJsonString(String data, TypeReference<T> typeRef)
+			throws JsonMappingException, JsonProcessingException {
+		return om.readValue(data, typeRef);
+	}
+
 	public static <T> T fromBytes(byte[] data, Class<T> clazz) throws IOException {
 		return om.readValue(data, clazz);
+	}
+
+	public static <T> T fromBytes(byte[] data, TypeReference<T> typeRef) throws IOException {
+		return om.readValue(data, typeRef);
 	}
 
 }
