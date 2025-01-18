@@ -22,6 +22,54 @@ public class IRODSTickets {
 
 	public static final AdminTag asAdmin = new AdminTag();
 
+	public static void createTicket(RcComm comm, String ticketName, TicketType ticketType, String logicalPath)
+			throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == ticketType) {
+			throw new IllegalArgumentException("Ticket type is null");
+		}
+
+		if (null == logicalPath || logicalPath.isEmpty()) {
+			throw new IllegalArgumentException("Logical path is null or empty");
+		}
+
+		String type = null;
+		if (TicketType.READ == ticketType) {
+			type = "read";
+		} else if (TicketType.WRITE == ticketType) {
+			type = "write";
+		}
+
+		execTicketOp(comm, false, "create", ticketName, type, logicalPath, ticketName, "");
+	}
+
+	public static void createTicket(AdminTag adminTag, RcComm comm, String ticketName, TicketType ticketType,
+			String logicalPath) throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == ticketType) {
+			throw new IllegalArgumentException("Ticket type is null");
+		}
+
+		if (null == logicalPath || logicalPath.isEmpty()) {
+			throw new IllegalArgumentException("Logical path is null or empty");
+		}
+
+		String type = null;
+		if (TicketType.READ == ticketType) {
+			type = "read";
+		} else if (TicketType.WRITE == ticketType) {
+			type = "write";
+		}
+
+		execTicketOp(comm, true, "create", ticketName, type, logicalPath, ticketName, "");
+	}
+
 	public static String createTicket(RcComm comm, TicketType ticketType, String logicalPath)
 			throws IOException, IRODSException {
 		var ticketName = genTicketName();
@@ -36,34 +84,18 @@ public class IRODSTickets {
 		return ticketName;
 	}
 
-	public static void createTicket(RcComm comm, String ticketName, TicketType ticketType, String logicalPath)
-			throws IOException, IRODSException {
-		String type = null;
-		if (TicketType.READ == ticketType) {
-			type = "read";
-		} else if (TicketType.WRITE == ticketType) {
-			type = "write";
-		}
-		execTicketOp(comm, false, "create", ticketName, type, logicalPath, ticketName, "");
-	}
-
-	public static void createTicket(AdminTag adminTag, RcComm comm, String ticketName, TicketType ticketType,
-			String logicalPath) throws IOException, IRODSException {
-		String type = null;
-		if (TicketType.READ == ticketType) {
-			type = "read";
-		} else if (TicketType.WRITE == ticketType) {
-			type = "write";
-		}
-		execTicketOp(comm, true, "create", ticketName, type, logicalPath, ticketName, "");
-	}
-
 	public static void deleteTicket(RcComm comm, String ticketName) throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
 		execTicketOp(comm, false, "delete", ticketName, "", "", "", "");
 	}
 
 	public static void deleteTicket(AdminTag adminTag, RcComm comm, String ticketName)
 			throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
 		execTicketOp(comm, true, "delete", ticketName, "", "", "", "");
 	}
 
@@ -104,6 +136,14 @@ public class IRODSTickets {
 
 	public static void addTicketConstraint(RcComm comm, String ticketName, TicketConstraint constraint)
 			throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		String et = null; // user, group, or host
 		String cv = null; // constraint value
 
@@ -125,6 +165,18 @@ public class IRODSTickets {
 
 	public static void addTicketConstraint(AdminTag adminTag, RcComm comm, String ticketName,
 			TicketConstraint constraint) throws IOException, IRODSException {
+		if (null == adminTag) {
+			throw new IllegalArgumentException("Admin tag is null");
+		}
+
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		String et = null; // user, group, or host
 		String cv = null; // constraint value
 
@@ -156,6 +208,14 @@ public class IRODSTickets {
 
 	public static void setTicketConstraint(RcComm comm, String ticketName, TicketConstraint constraint)
 			throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		String property = null;
 		int cv = -1;
 
@@ -181,6 +241,18 @@ public class IRODSTickets {
 
 	public static void setTicketConstraint(AdminTag adminTag, RcComm comm, String ticketName,
 			TicketConstraint constraint) throws IOException, IRODSException {
+		if (null == adminTag) {
+			throw new IllegalArgumentException("Admin tag is null");
+		}
+
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		String property = null;
 		int cv = -1;
 
@@ -216,6 +288,14 @@ public class IRODSTickets {
 
 	public static void removeTicketConstraint(RcComm comm, String ticketName, TicketConstraint constraint)
 			throws IOException, IRODSException {
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		if (constraint instanceof UserConstraint c) {
 			execTicketOp(comm, false, "mod", ticketName, "remove", "user", c.value, "");
 		} else if (constraint instanceof GroupConstraint c) {
@@ -235,6 +315,18 @@ public class IRODSTickets {
 
 	public static void removeTicketConstraint(AdminTag adminTag, RcComm comm, String ticketName,
 			TicketConstraint constraint) throws IOException, IRODSException {
+		if (null == adminTag) {
+			throw new IllegalArgumentException("Admin tag is null");
+		}
+
+		if (null == ticketName || ticketName.isEmpty()) {
+			throw new IllegalArgumentException("Ticket name is null or empty");
+		}
+
+		if (null == constraint) {
+			throw new IllegalArgumentException("Ticket constraint is null");
+		}
+
 		if (constraint instanceof UserConstraint c) {
 			execTicketOp(comm, true, "mod", ticketName, "remove", "user", c.value, "");
 		} else if (constraint instanceof GroupConstraint c) {
@@ -264,6 +356,10 @@ public class IRODSTickets {
 
 	private static void execTicketOp(RcComm comm, boolean runAsAdmin, String cmd, String ticketNameOrId, String arg1,
 			String arg2, String arg3, String arg4) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
 		var input = new TicketAdminInp_PI();
 		input.arg1 = cmd;
 		input.arg2 = ticketNameOrId;
