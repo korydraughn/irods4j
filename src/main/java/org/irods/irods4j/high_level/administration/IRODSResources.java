@@ -30,8 +30,9 @@ public class IRODSResources {
 		public static final String UNIXFILESYSTEM = "unixfilesystem";
 	}
 
-	public static enum ResourceStatus {
-		UP, DOWN, UNKNOWN
+	public static final class ResourceStatus {
+		public static final String UP = "up";
+		public static final String DOWN = "down";
 	}
 
 	public static final class ResourceInfo {
@@ -41,7 +42,7 @@ public class IRODSResources {
 		public String zoneName;
 		public String hostName;
 		public String vaultPath;
-		public ResourceStatus status;
+		public String status;
 		public String contextString;
 		public String comments;
 		public String info;
@@ -77,7 +78,7 @@ public class IRODSResources {
 	}
 
 	public static final class ResourceStatusProperty extends ResourceProperty {
-		public ResourceStatus value;
+		public String value;
 	}
 
 	public static final class ResourceCommentsProperty extends ResourceProperty {
@@ -260,7 +261,7 @@ public class IRODSResources {
 		info.zoneName = row.get(2);
 		info.hostName = row.get(3);
 		info.vaultPath = row.get(4);
-		info.status = toResourceStatus(row.get(5));
+		info.status = row.get(5);
 		info.contextString = row.get(6);
 		info.comments = row.get(7);
 		info.info = row.get(8);
@@ -307,14 +308,7 @@ public class IRODSResources {
 			input.arg4 = p.value;
 		} else if (property instanceof ResourceStatusProperty p) {
 			input.arg3 = "status";
-
-			if (ResourceStatus.UP == p.value) {
-				input.arg4 = "up";
-			} else if (ResourceStatus.DOWN == p.value) {
-				input.arg4 = "down";
-			} else {
-				throw new IllegalArgumentException("Resource status not supported");
-			}
+			input.arg4 = p.value;
 		} else if (property instanceof ResourceCommentsProperty p) {
 			input.arg3 = "comment";
 			input.arg4 = p.value;
@@ -384,18 +378,6 @@ public class IRODSResources {
 		}
 
 		return Optional.of(rows.get(0).get(0));
-	}
-
-	public static ResourceStatus toResourceStatus(String status) {
-		if ("up".equals(status)) {
-			return ResourceStatus.UP;
-		}
-
-		if ("down".equals(status)) {
-			return ResourceStatus.DOWN;
-		}
-
-		return ResourceStatus.UNKNOWN;
 	}
 
 }
