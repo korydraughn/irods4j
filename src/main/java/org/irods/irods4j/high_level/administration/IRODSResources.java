@@ -209,7 +209,7 @@ public class IRODSResources {
 
 		var input = new Genquery2Input_PI();
 		input.query_string = String.format("select RESC_ID where RESC_NAME = '%s'", resourceName);
-		input.zone = comm.clientUserZone;
+//		input.zone = comm.clientUserZone;
 
 		var output = new Reference<String>();
 		var ec = IRODSApi.rcGenQuery2(comm, input, output);
@@ -238,7 +238,7 @@ public class IRODSResources {
 				+ "RESC_VAULT_PATH, RESC_STATUS, RESC_CONTEXT, RESC_COMMENT, RESC_INFO, "
 				+ "RESC_FREE_SPACE, RESC_FREE_SPACE_TIME, RESC_PARENT, RESC_CREATE_TIME, "
 				+ "RESC_MODIFY_TIME, RESC_MODIFY_TIME_MILLIS where RESC_NAME = '%s'", resourceName);
-		input.zone = comm.clientUserZone;
+//		input.zone = comm.clientUserZone;
 
 		var output = new Reference<String>();
 		var ec = IRODSApi.rcGenQuery2(comm, input, output);
@@ -362,7 +362,7 @@ public class IRODSResources {
 
 		var input = new Genquery2Input_PI();
 		input.query_string = String.format("select RESC_NAME where RESC_ID = '%s'", resourceId);
-		input.zone = comm.clientUserZone;
+//		input.zone = comm.clientUserZone;
 
 		var output = new Reference<String>();
 		var ec = IRODSApi.rcGenQuery2(comm, input, output);

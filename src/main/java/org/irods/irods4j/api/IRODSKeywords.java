@@ -41,5 +41,6 @@ public class IRODSKeywords {
 	public static final String UNREG = "unreg";
 	public static final String VERIFY_BY_SIZE = "verifyBySize";
 	public static final String VERIFY_CHKSUM = "verifyChksum";
+	public static final String ZONE = "zone";
 
 }

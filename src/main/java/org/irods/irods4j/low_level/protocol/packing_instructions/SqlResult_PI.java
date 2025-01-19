@@ -5,11 +5,14 @@ import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 
 public class SqlResult_PI {
 
 	public int attriInx;
 	public int reslen;
+
+	@JacksonXmlElementWrapper(useWrapping = false)
 	public List<String> value;
 
 	public static void main(String[] args) throws JsonProcessingException {
