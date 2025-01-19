@@ -40,7 +40,7 @@ class TestRcGenQuery2 {
 	void testRcGenQuery2() throws IOException, IRODSException {
 		var input = new Genquery2Input_PI();
 		input.query_string = "select COLL_NAME";
-		input.zone = zone;
+//		input.zone = zone;
 		input.sql_only = 0;
 		input.column_mappings = 0;
 

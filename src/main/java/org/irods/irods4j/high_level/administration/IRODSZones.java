@@ -188,7 +188,7 @@ public class IRODSZones {
 
 		var input = new Genquery2Input_PI();
 		input.query_string = String.format("select ZONE_NAME where ZONE_NAME = '%s'", zoneName);
-		input.zone = comm.clientUserZone;
+//		input.zone = comm.clientUserZone;
 
 		var output = new Reference<String>();
 		var ec = IRODSApi.rcGenQuery2(comm, input, output);
@@ -215,7 +215,7 @@ public class IRODSZones {
 		var input = new Genquery2Input_PI();
 		input.query_string = String
 				.format("select ZONE_ID, ZONE_TYPE, ZONE_CONNECTION, ZONE_COMMENT where ZONE_NAME = '%s'", zoneName);
-		input.zone = comm.clientUserZone;
+//		input.zone = comm.clientUserZone;
 
 		var output = new Reference<String>();
 		var ec = IRODSApi.rcGenQuery2(comm, input, output);
