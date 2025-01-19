@@ -1,6 +1,9 @@
 package org.irods.irods4j.high_level.administration;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -51,21 +54,25 @@ public class IRODSUsers {
 		}
 	}
 
+	public static enum UserAuthenticationOperation {
+		ADD, REMOVE
+	}
+
 	public static class UserProperty {
 	}
 
-	// TODO May not be implementable without obfuscation.
 	public static final class UserPasswordProperty extends UserProperty {
 		public String value;
-		public Optional<String> requesterPassword;
+		public String requesterPassword;
 	}
 
 	public static final class UserTypeProperty extends UserProperty {
 		public UserType value;
 	}
 
-	// TODO May not support because auth schemes on the user is weird.
 	public static final class UserAuthenticationProperty extends UserProperty {
+		public UserAuthenticationOperation op;
+		public String value;
 	}
 
 	public static UserType toUserType(String v) {
@@ -94,7 +101,7 @@ public class IRODSUsers {
 			return "rodsadmin";
 		}
 
-		return null;
+		throw new IllegalArgumentException("User type not supported");
 	}
 
 	public static String localUniqueName(RcComm comm, User user) throws IOException, IRODSException {
@@ -191,8 +198,50 @@ public class IRODSUsers {
 		}
 	}
 
-	public static void modifyUser(RcComm comm, User user, UserProperty property) {
-		// TODO
+	public static void modifyUser(RcComm comm, User user, UserProperty property)
+			throws IOException, IRODSException, NoSuchAlgorithmException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
+		if (null == user) {
+			throw new IllegalArgumentException("User is null");
+		}
+
+		if (null == property) {
+			throw new IllegalArgumentException("User property is null");
+		}
+
+		var name = localUniqueName(comm, user);
+
+		var input = new GeneralAdminInp_PI();
+		input.arg0 = "modify";
+		input.arg1 = "user";
+		input.arg2 = name;
+
+		if (property instanceof UserPasswordProperty p) {
+			input.arg3 = "password";
+			input.arg4 = obfuscatePassword(p);
+//			input.arg4 = obfuscatePassword(p).trim();
+			System.out.println("obfuscated password = " + input.arg4);
+			System.out.println("obfuscated password length = " + input.arg4.length());
+		} else if (property instanceof UserTypeProperty p) {
+			input.arg3 = "type";
+			input.arg4 = toString(p.value);
+		} else if (property instanceof UserAuthenticationProperty p) {
+			input.arg4 = p.value;
+
+			if (UserAuthenticationOperation.ADD == p.op) {
+				input.arg3 = "addAuth";
+			} else if (UserAuthenticationOperation.REMOVE == p.op) {
+				input.arg3 = "rmAuth";
+			}
+		}
+
+		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		if (ec < 0) {
+			throw new IRODSException(ec, "rcGeneralAdmin error");
+		}
 	}
 
 	public static void addGroup(RcComm comm, Group group) throws IOException, IRODSException {
@@ -473,13 +522,13 @@ public class IRODSUsers {
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcSpecificQuery error");
 		}
-		
+
 		if (0 == output.value.rowCnt) {
 			return groups;
 		}
 
-        var sqlResult = output.value.SqlResult_PI.get(1);
-        sqlResult.value.forEach(group -> groups.add(new Group(group)));
+		var sqlResult = output.value.SqlResult_PI.get(1);
+		sqlResult.value.forEach(group -> groups.add(new Group(group)));
 
 		return groups;
 	}
@@ -632,6 +681,169 @@ public class IRODSUsers {
 	public static boolean userIsMemberOfGroup(RcComm comm, Group group, User user) {
 		// TODO Disabled until GenQuery2 provides better support for groups.
 		throw new UnsupportedOperationException("Not implemented yet");
+	}
+
+	private static String obfuscatePassword(UserPasswordProperty p) throws NoSuchAlgorithmException {
+		final var MAX_PASSWORD_LEN = 50;
+
+		var plainTextPasswordSb = new StringBuilder();
+		plainTextPasswordSb.append(p.value);
+		plainTextPasswordSb.setLength(MAX_PASSWORD_LEN + 10);
+
+		var count = MAX_PASSWORD_LEN - 10 - p.value.length();
+		if (count > 15) {
+			// The random sequence of characters is used for padding and must match
+			// what is defined on the server-side.
+			plainTextPasswordSb.append("1gCBizHWbwIYyWLoysGzTe6SyzqFKMniZX05faZHWAwQKXf6Fs".substring(0, count));
+		}
+
+		var keySb = new StringBuilder();
+		if (p.requesterPassword.length() >= MAX_PASSWORD_LEN) {
+			throw new IllegalArgumentException("Requester password exceeds max key size: " + MAX_PASSWORD_LEN);
+		}
+		keySb.append(p.requesterPassword.substring(0, Math.min(p.requesterPassword.length(), MAX_PASSWORD_LEN)));
+
+		return obfEncodeKey(plainTextPasswordSb.toString(), keySb.toString());
+	}
+
+	private static String obfEncodeKey(String data, String key) throws NoSuchAlgorithmException {
+		var wheelLen = 26 + 26 + 10 + 15;
+		var wheel = new int[wheelLen];
+
+		int i;
+		int j = 0;
+		for (i = 0; i < 10; ++i) {
+			wheel[j++] = (int) '0' + i;
+		}
+		for (i = 0; i < 26; ++i) {
+			wheel[j++] = (int) 'A' + i;
+		}
+		for (i = 0; i < 26; ++i) {
+			wheel[j++] = (int) 'a' + i;
+		}
+		for (i = 0; i < 15; ++i) {
+			wheel[j++] = (int) '!' + i;
+		}
+
+		var keyBuf = new int[101]; // Includes space for null-terminating byte.
+		var keyBytes = key.getBytes(StandardCharsets.UTF_8);
+		var length = Math.min(keyBuf.length - 1, key.length());
+		for (int x = 0; x < length; ++x) {
+			keyBuf[x] = keyBytes[x];
+		}
+//		System.arraycopy(keyBytes, 0, keyBuf, 0, Math.min(keyBuf.length - 1, key.length()));
+
+		// TODO Must also support SHA1.
+		// Get the MD5 digest of the key to get some bytes with many different values.
+		var hexKey = obfMakeOneWayHash("md5", keyBuf, keyBuf.length);
+
+		var hexKeyBytes = hexKey.getBytes(StandardCharsets.UTF_8);
+		var buffer = new int[65]; // Each digest is 16 bytes, 4 of them.
+		for (int x = 0; x < hexKeyBytes.length; ++x) {
+			buffer[x] = hexKeyBytes[x];
+		}
+//		System.arraycopy(hexKeyBytes, 0, buffer, 0, hexKeyBytes.length);
+
+		var v = obfMakeOneWayHash("md5", buffer, 16);
+		var bytes = v.getBytes(StandardCharsets.UTF_8);
+		for (int x = 0; x < 16; ++x) {
+			buffer[x + 16] = bytes[x];
+		}
+//		System.arraycopy(v, 0, buffer, 16, 16);
+
+		v = obfMakeOneWayHash("md5", buffer, 32);
+		bytes = v.getBytes(StandardCharsets.UTF_8);
+		for (int x = 0; x < 16; ++x) {
+			buffer[x + 32] = bytes[x];
+		}
+//		System.arraycopy(v, 0, buffer, 32, 16);
+
+		v = obfMakeOneWayHash("md5", buffer, 32);
+		bytes = v.getBytes(StandardCharsets.UTF_8);
+		for (int x = 0; x < 16; ++x) {
+			buffer[x + 48] = bytes[x];
+		}
+//		System.arraycopy(v, 0, buffer, 48, 16);
+
+		var cpIn = 0;
+		var cpOut = 0;
+		var inSb = new StringBuilder(data);
+		final var MAX_PASSWORD_LEN = 50;
+		var outSb = new StringBuilder();
+		outSb.setLength(MAX_PASSWORD_LEN + 100);
+
+		// TODO
+//		if (HASH_ALGO_SHA1 == defaultHashAlgo) {
+//			inSb.setCharAt(cpOut++, 's');
+//			inSb.setCharAt(cpOut++, 'h');
+//			inSb.setCharAt(cpOut++, 'a');
+//			inSb.setCharAt(cpOut++, '1');
+//		}
+
+		var cpKey = 0;
+		var pc = 0; // Previous character.
+		for (;; ++cpIn) {
+			var k = buffer[cpKey];
+			if (cpKey > 60) {
+				cpKey = 60;
+			}
+
+			var found = false;
+			for (i = 0; i < wheelLen; ++i) {
+				if (wheel[i] == (int) inSb.charAt(cpIn)) {
+					j = i + k + pc;
+					j %= wheelLen;
+					outSb.setCharAt(cpOut++, (char) (wheel[j] & 0xff));
+
+					// "cipherBlockChaining" is not supported by this implementation. Based on the C
+					// implementation, it is only enabled through use of functions which are not
+					// supported by this implementation, therefore it is irrelevant.
+//					if (cipherBlockChaining) {
+//						pc = cpOut - 1;
+//					}
+
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) {
+				if (inSb.charAt(cpIn) == '\0') {
+					outSb.setCharAt(cpOut++, '\0');
+					outSb.setLength(cpIn);
+					return outSb.toString();
+				} else {
+					outSb.setCharAt(cpOut++, inSb.charAt(cpIn));
+				}
+			}
+		}
+	}
+
+	private static String obfMakeOneWayHash(String hashAlgo, int[] buffer, int bufferLength)
+			throws NoSuchAlgorithmException {
+		// Convert int array to a unsigned byte array.
+		var bufUnsigned = new byte[bufferLength];
+		for (int x = 0; x < bufferLength; ++x) {
+			bufUnsigned[x] = (byte) (buffer[x] & 0xff);
+		}
+
+		// Hash the buffer.
+		var hasher = MessageDigest.getInstance(hashAlgo);
+		var keyDigest = hasher.digest(bufUnsigned);
+
+		// Convert the hashed buffer to a hex sequence.
+		var hexKeySb = new StringBuilder();
+		for (int i = 0; i < 16; ++i) {
+			// From the C implementation.
+//			hexKeySb.append(String.format("%2.2x", keyDigest[i]));
+
+			// This is the correct invocation for Java. The C implementation
+			// likely has a bug in the format specifier (i.e. "%2.2x"). The
+			// precision component doesn't make sense for hex.
+			hexKeySb.append(String.format("%2x", keyDigest[i]));
+		}
+
+		return hexKeySb.toString();
 	}
 
 }
