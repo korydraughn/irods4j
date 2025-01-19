@@ -796,9 +796,8 @@ public class IRODSApi {
 		return ec;
 	}
 
-	public static int rcZoneReport(RcComm comm, SpecificQueryInp_PI input, Reference<BytesBuf_PI> output)
-			throws IOException {
-		sendApiRequest(comm.socket, 10205, input);
+	public static int rcZoneReport(RcComm comm, Reference<BytesBuf_PI> output) throws IOException {
+		sendApiRequest(comm.socket, 10205);
 		return receiveServerResponse(comm, BytesBuf_PI.class, output, null);
 	}
 
