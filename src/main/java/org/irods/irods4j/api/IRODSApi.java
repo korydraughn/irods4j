@@ -191,6 +191,25 @@ public class IRODSApi {
 		public int encryptionSaltSize = 8;
 
 		public String hashAlgorithm = "md5";
+
+		public ConnectionOptions copy() {
+			var copy = new ConnectionOptions();
+
+			copy.clientServerNegotiation = clientServerNegotiation;
+
+			copy.sslTruststore = sslTruststore;
+			copy.sslTruststorePassword = sslTruststorePassword;
+			copy.sslProtocol = sslProtocol;
+
+			copy.encryptionAlgorithm = encryptionAlgorithm;
+			copy.encryptionKeySize = encryptionKeySize;
+			copy.encryptionNumHashRounds = encryptionNumHashRounds;
+			copy.encryptionSaltSize = encryptionSaltSize;
+
+			copy.hashAlgorithm = hashAlgorithm;
+
+			return copy;
+		}
 	}
 
 	public static RcComm rcConnect(String host, int port, String clientUsername, String clientUserZone,
