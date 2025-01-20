@@ -1,6 +1,7 @@
 package org.irods.irods4j.high_level.io;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -300,8 +301,11 @@ public class IRODSDataObjectStream implements AutoCloseable {
 		input.openFlags = openMode;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 0;
+		input.KeyValPair_PI.keyWord = new ArrayList<>();
+		input.KeyValPair_PI.svalue = new ArrayList<>();
 
 		replicaNumber.ifPresent(v -> {
+			++input.KeyValPair_PI.ssLen;
 			input.KeyValPair_PI.keyWord.add(IRODSKeywords.REPL_NUM);
 			input.KeyValPair_PI.svalue.add(v.toString());
 			this.replicaNumber = v;
@@ -311,11 +315,13 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			if (replicaNumber.isPresent()) {
 				throw new IllegalStateException("Replica number and root resource cannot be set at the same time");
 			}
+			++input.KeyValPair_PI.ssLen;
 			input.KeyValPair_PI.keyWord.add(IRODSKeywords.RESC_NAME);
 			input.KeyValPair_PI.svalue.add(v);
 		});
 
 		replicaToken.ifPresent(v -> {
+			++input.KeyValPair_PI.ssLen;
 			input.KeyValPair_PI.keyWord.add(IRODSKeywords.REPLICA_TOKEN);
 			input.KeyValPair_PI.svalue.add(v);
 			this.replicaToken = v;
