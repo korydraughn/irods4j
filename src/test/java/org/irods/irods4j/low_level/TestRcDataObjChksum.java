@@ -111,7 +111,6 @@ class TestRcDataObjChksum {
 		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
-		assertNotNull(output.value);
 		assertTrue("sha2:S8C1OsiUDW26PD33h0Y1jSUjKgEsG5G6449Ko4wsW5A=".equals(output.value));
 	}
 

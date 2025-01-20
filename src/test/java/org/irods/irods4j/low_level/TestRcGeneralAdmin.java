@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.common.JsonUtil;
+import org.irods.irods4j.common.XmlUtil;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,6 +26,9 @@ class TestRcGeneralAdmin {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
+		XmlUtil.enablePrettyPrinting();
+		JsonUtil.enablePrettyPrinting();
+
 		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
 				Optional.empty());
 		assertNotNull(comm);
@@ -59,7 +64,7 @@ class TestRcGeneralAdmin {
 	}
 
 	@Test
-	void testAddChildToResource() throws Exception {
+	void testAddRemoveChildResource() throws Exception {
 		String rescName1 = "irods4j_pt_1";
 		String rescName2 = "irods4j_pt_2";
 
@@ -103,6 +108,9 @@ class TestRcGeneralAdmin {
 		input.arg2 = rescName1;
 		input.arg3 = rescName2;
 		assertEquals(IRODSApi.rcGeneralAdmin(comm1, input), 0);
+
+		// Make sure to disconnect the intermediate connection.
+		IRODSApi.rcDisconnect(comm1);
 
 		// Remove resource.
 		for (var rescName : new String[] { rescName1, rescName2 }) {

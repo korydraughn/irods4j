@@ -90,6 +90,8 @@ class TestRcSwitchUser {
 
 		ec = IRODSApi.rcGeneralAdmin(adminComm, removeUserInput);
 		assertEquals(ec, 0);
+
+		IRODSApi.rcDisconnect(adminComm);
 	}
 
 }

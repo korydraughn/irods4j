@@ -72,6 +72,7 @@ class TestIRODSUsers {
 				Optional.empty(), Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", prop.value);
+		IRODSApi.rcDisconnect(comm1);
 	}
 
 }
