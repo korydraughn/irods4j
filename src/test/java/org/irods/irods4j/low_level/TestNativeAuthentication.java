@@ -41,4 +41,13 @@ class TestNativeAuthentication {
 		assertDoesNotThrow(() -> IRODSApi.rcAuthenticateClient(comm, "native", password));
 	}
 
+	@Test
+	void testAuthenticateAsAnonymousUser() {
+		var anonymousComm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, "anonymous", zone, Optional.empty(),
+				Optional.empty(), Optional.empty(), Optional.empty()));
+		assertNotNull(anonymousComm);
+		assertDoesNotThrow(() -> IRODSApi.rcAuthenticateClient(anonymousComm, "native", ""));
+		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(anonymousComm));
+	}
+
 }

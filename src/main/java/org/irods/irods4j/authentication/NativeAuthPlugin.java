@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class NativeAuthPlugin extends AuthPlugin {
-	
+
 	private static final Logger log = LogManager.getLogger();
 
 	public NativeAuthPlugin() {
@@ -28,10 +28,12 @@ public class NativeAuthPlugin extends AuthPlugin {
 	public JsonNode authClientStart(RcComm comm, JsonNode context) {
 		var resp = (ObjectNode) context.deepCopy();
 		resp.put(AUTH_NEXT_OPERATION, AUTH_CLIENT_AUTH_REQUEST);
-		// TODO Why attach the proxy user's name and zone?
-		// Seems these should use the client's info.
+
+		// The proxy user's information is used for authentication because it covers
+		// all cases for connecting to iRODS (i.e. proxied and non-proxied connections).
 		resp.put("user_name", comm.proxyUsername);
 		resp.put("zone_name", comm.proxyUserZone);
+
 		return resp;
 	}
 
@@ -47,32 +49,33 @@ public class NativeAuthPlugin extends AuthPlugin {
 		final var CHALLENGE_LEN = 64;
 		requestResultSb.setLength(CHALLENGE_LEN);
 		log.debug("requestResultSb string = [{}]", requestResultSb.toString());
-		
-		// TODO Check for the anonymous user.
-		// See plugins/auth/src/native.cpp for details
-		// (i.e. native_auth_establish_context.cpp).
-
-		final var MAX_PASSWORD_LEN = 50;
-		var passwordSb = new StringBuilder();
-		// TODO Enforce the max password length. We need to open an issue for this.
-		// The user could enter a long password which gets truncated!
-		passwordSb.append(context.get("password").asText());
-		passwordSb.setLength(MAX_PASSWORD_LEN);
-		// TODO DO NOT LOG PASSWORDS!
-//		log.debug("passwordSb string = [{}]", passwordSb.toString());
-
-		// TODO Compute the session signature and store it in the RcComm.
-		// See plugins/auth/src/native.cpp for details
-		// (i.e. native_auth_establish_context.cpp).
 
 		var md5BufSb = new StringBuilder();
 		// [64+1] is the challenge string received by the server.
 		// The "+1" is space for the null byte.
 		md5BufSb.append(requestResultSb);
-		// [50+1] is the deobfuscated user's password.
-		// The "+1" is space for the null byte.
-		md5BufSb.append(passwordSb);
-		log.debug("MD5 string = [{}]", md5BufSb.toString());
+
+		// Compute the session signature and store it in the RcComm.
+		// See plugins/auth/src/native.cpp for details
+		// (i.e. native_auth_establish_context.cpp).
+		comm.sessionSignature = generateSessionSignature(md5BufSb.substring(0, 16));
+		log.debug("Session signature = [{}]", comm.sessionSignature);
+
+		// If the anonymous user account is being used, ignore the password.
+		// See plugins/auth/src/native.cpp for details.
+		if (!"anonymous".equals(context.get("user_name").asText())) {
+			final var MAX_PASSWORD_LEN = 50;
+			var passwordSb = new StringBuilder();
+			// TODO Enforce the max password length. We need to open an issue for this.
+			// The user could enter a long password which gets truncated!
+			passwordSb.append(context.get("password").asText());
+			passwordSb.setLength(MAX_PASSWORD_LEN);
+
+			// [50+1] is the unobfuscated user's password.
+			// The "+1" is space for the null byte.
+			md5BufSb.append(passwordSb);
+			log.debug("MD5 string = [{}]", md5BufSb.toString());
+		}
 
 		var hasher = MessageDigest.getInstance("md5");
 		hasher.update(md5BufSb.toString().getBytes(StandardCharsets.UTF_8));
@@ -120,6 +123,25 @@ public class NativeAuthPlugin extends AuthPlugin {
 		((ObjectNode) resp).put(AUTH_NEXT_OPERATION, AUTH_FLOW_COMPLETE);
 
 		return resp;
+	}
+
+	private static String generateSessionSignature(String buffer) {
+		final var requiredSize = 16;
+
+		if (buffer.length() < requiredSize) {
+			throw new IllegalArgumentException("Buffer must be at least 16 bytes long");
+		}
+
+		var sigSb = new StringBuilder();
+		for (var ch : buffer.getBytes(StandardCharsets.UTF_8)) {
+			sigSb.append(String.format("%02x", ch));
+		}
+
+		if (sigSb.length() != (2 * requiredSize)) {
+			throw new IllegalStateException("Session signature is not 32 bytes in length");
+		}
+
+		return sigSb.toString();
 	}
 
 }

@@ -212,6 +212,8 @@ public class IRODSApi {
 			throw new IllegalArgumentException("Client zone is null or empty");
 		}
 
+		var connOptions = options.orElse(new ConnectionOptions());
+
 		RcComm comm = new RcComm();
 		comm.socket = comm.plainSocket = new Socket(host, port);
 
@@ -259,38 +261,11 @@ public class IRODSApi {
 		// 0 = CS_NEG_STATUS_FAILURE
 		// See irods_client_server_negotiation.hpp for these.
 		if (1 != csneg.status) {
-			// TODO Handle error. Server may be in a bad state.
 			log.error("Client-Server negotiation error: CS_NEG_STATUS={}", csneg.status);
+			return null;
 		}
 
-		// Get the client's negotiation policy and resolve it against
-		// the server's policy.
-		// TODO This part MUST be configurable by the client (e.g. read from
-		// a config file).
-		// TODO For now, let's just try to meet the server's demands. The
-		// solution is to implement the negotiate function in
-		// irods_client_negotiation.cpp#L268 from the main branch.
-		var closeSocket = false;
-		if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(csneg.result)) {
-			log.debug("Client-Server negotiation will use TLS");
-			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
-			comm.usingTLS = true;
-		} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(csneg.result)) {
-			log.debug("Client-Server negotiation will use TLS");
-			csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
-			comm.usingTLS = true;
-		} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(csneg.result)) {
-			log.debug("Client-Server negotiation will not use TLS");
-			csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
-		} else {
-			// TODO Handle error. Unknown negotiation result.
-			// Send the server a CS_NEG_PI request telling it the
-			// negotiation failed. Then close the socket and return
-			// an error (or throw an exception).
-			csneg.status = 0; // CS_NEG_STATUS_FAILURE
-			csneg.result = "cs_neg_result_kw=CS_NEG_FAILURE;";
-			closeSocket = true;
-		}
+		csneg = clientServerNegotiation(comm, connOptions.clientServerNegotiation, csneg.result);
 
 		msgbody = XmlUtil.toXmlString(csneg);
 		hdr.type = MsgHeader_PI.MsgType.RODS_CS_NEG_T;
@@ -301,12 +276,6 @@ public class IRODSApi {
 		// Read the message header from the server.
 		mh = Network.readMsgHeader_PI(comm.socket);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
-
-		// TODO Does the server automatically close the socket after a
-		// failed client-server negotiation attempt?
-//		if (closeSocket) {
-//			comm.socket.close();
-//		}
 
 		if (mh.intInfo < 0) {
 			if (errorInfo.isPresent()) {
@@ -324,8 +293,6 @@ public class IRODSApi {
 		comm.status = vers.status;
 		comm.cookie = vers.cookie;
 
-		var connOptions = options.orElse(new ConnectionOptions());
-
 		// Store the desired hashing algorithm in the RcComm. This is needed
 		// for password obfuscation (if the client wishes to manipulate user's
 		// passwords).
@@ -342,6 +309,47 @@ public class IRODSApi {
 		return comm;
 	}
 
+	private static CS_NEG_PI clientServerNegotiation(RcComm comm, String clientNeg, String serverNeg) {
+		var csneg = new CS_NEG_PI();
+
+		csneg.status = 1;
+
+		if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(clientNeg)) {
+			if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+				comm.usingTLS = true;
+			} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+				comm.usingTLS = true;
+			} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_FAILURE;";
+			}
+		} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(clientNeg)) {
+			if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+				comm.usingTLS = true;
+			} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_SSL;";
+				comm.usingTLS = true;
+			} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
+			}
+		} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(clientNeg)) {
+			if (CS_NEG_PI.RESULT_CS_NEG_REQUIRE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_FAILURE;";
+			} else if (CS_NEG_PI.RESULT_CS_NEG_DONT_CARE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
+			} else if (CS_NEG_PI.RESULT_CS_NEG_REFUSE.equals(serverNeg)) {
+				csneg.result = "cs_neg_result_kw=CS_NEG_USE_TCP;";
+			}
+		} else {
+			csneg.status = 0; // CS_NEG_STATUS_FAILURE
+			csneg.result = "cs_neg_result_kw=CS_NEG_FAILURE;";
+		}
+
+		return csneg;
+	}
+
 	private static void enableTLS(RcComm comm, ConnectionOptions options) throws Exception {
 		if (comm.secure) {
 			log.debug("SSL/TLS is already in use.");
@@ -349,17 +357,9 @@ public class IRODSApi {
 		}
 
 		if (!comm.usingTLS) {
-			log.debug("Skipping enabling of SSL/TLS communication.");
+			log.debug("Continuing without SSL/TLS.");
 			return;
 		}
-
-		// TODO The code below is needed by the PamPasswordAuthPlugin.
-		// for when the client isn't using TLS initially, but wants to
-		// use PAM.
-		//
-		// This TODO can be ignored if we avoid making the PamPasswordAuthPlugin
-		// magically enable TLS. Perhaps it should throw an exception when
-		// the RcComm isn't using a secure communication channel?
 
 		// This block is for loading self-signed certificates.
 		if (null != options.sslTruststore) {
