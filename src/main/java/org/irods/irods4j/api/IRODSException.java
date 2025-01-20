@@ -7,7 +7,7 @@ public class IRODSException extends Exception {
 	private int errorCode;
 
 	public IRODSException(int errorCode, String message) {
-		super(message);
+		super(String.format("[%d] %s", errorCode, message));
 		this.errorCode = errorCode;
 	}
 	

@@ -221,10 +221,9 @@ public class IRODSUsers {
 
 		if (property instanceof UserPasswordProperty p) {
 			input.arg3 = "password";
+			// TODO Don't rely on obfuscation. Allow clients to send plaintext passwords in
+			// the clear.
 			input.arg4 = obfuscatePassword(p);
-//			input.arg4 = obfuscatePassword(p).trim();
-			System.out.println("obfuscated password = " + input.arg4);
-			System.out.println("obfuscated password length = " + input.arg4.length());
 		} else if (property instanceof UserTypeProperty p) {
 			input.arg3 = "type";
 			input.arg4 = toString(p.value);
@@ -703,72 +702,50 @@ public class IRODSUsers {
 		}
 		keySb.append(p.requesterPassword.substring(0, Math.min(p.requesterPassword.length(), MAX_PASSWORD_LEN)));
 
-		return obfEncodeKey(plainTextPasswordSb.toString(), keySb.toString());
+		return obfEncodeByKey(plainTextPasswordSb.toString(), keySb.toString(), "md5");
 	}
 
-	private static String obfEncodeKey(String data, String key) throws NoSuchAlgorithmException {
-		var wheelLen = 26 + 26 + 10 + 15;
-		var wheel = new int[wheelLen];
-
-		int i;
-		int j = 0;
-		for (i = 0; i < 10; ++i) {
-			wheel[j++] = (int) '0' + i;
-		}
-		for (i = 0; i < 26; ++i) {
-			wheel[j++] = (int) 'A' + i;
-		}
-		for (i = 0; i < 26; ++i) {
-			wheel[j++] = (int) 'a' + i;
-		}
-		for (i = 0; i < 15; ++i) {
-			wheel[j++] = (int) '!' + i;
-		}
-
-		var keyBuf = new int[101]; // Includes space for null-terminating byte.
+	// This function is a port of obfEncodeByKey() in
+	// irods/irods/lib/core/src/obf.cpp.
+	private static String obfEncodeByKey(String data, String key, String hashAlgo) throws NoSuchAlgorithmException {
+//		var keyBuf = new int[100 + 1]; // +1 for null terminating byte.
+//		var keyBytes = key.getBytes(StandardCharsets.UTF_8);
+//		var length = Math.min(keyBuf.length - 1, key.length());
+//		for (int x = 0; x < length; ++x) {
+//			keyBuf[x] = (int) (keyBytes[x] & 0xff);
+//		}
+		var keyBuf = new int[100];
 		var keyBytes = key.getBytes(StandardCharsets.UTF_8);
-		var length = Math.min(keyBuf.length - 1, key.length());
+		var length = Math.min(keyBuf.length, key.length());
 		for (int x = 0; x < length; ++x) {
-			keyBuf[x] = keyBytes[x];
+			keyBuf[x] = keyBytes[x] & 0xff;
 		}
-//		System.arraycopy(keyBytes, 0, keyBuf, 0, Math.min(keyBuf.length - 1, key.length()));
 
 		// TODO Must also support SHA1.
 		// Get the MD5 digest of the key to get some bytes with many different values.
-		var hexKey = obfMakeOneWayHash("md5", keyBuf, keyBuf.length);
+//		var hexKey = obfMakeOneWayHash("md5", keyBuf, keyBuf.length - 1);
+//		var buffer = new int[64 + 1]; // Each digest is 16 bytes, 4 of them.
+		var hexKey = obfMakeOneWayHash(hashAlgo, keyBuf, keyBuf.length);
+		var buffer = new int[64]; // Each digest is 16 bytes, 4 of them.
+		copyIntArrayToByteArray(buffer, 0, hexKey, hexKey.length);
 
-		var hexKeyBytes = hexKey.getBytes(StandardCharsets.UTF_8);
-		var buffer = new int[65]; // Each digest is 16 bytes, 4 of them.
-		for (int x = 0; x < hexKeyBytes.length; ++x) {
-			buffer[x] = hexKeyBytes[x];
-		}
-//		System.arraycopy(hexKeyBytes, 0, buffer, 0, hexKeyBytes.length);
+		// Hash of the hash.
+		var v = obfMakeOneWayHash(hashAlgo, buffer, 16);
+		copyIntArrayToByteArray(buffer, 16, v, v.length);
 
-		var v = obfMakeOneWayHash("md5", buffer, 16);
-		var bytes = v.getBytes(StandardCharsets.UTF_8);
-		for (int x = 0; x < 16; ++x) {
-			buffer[x + 16] = bytes[x];
-		}
-//		System.arraycopy(v, 0, buffer, 16, 16);
+		// Hash of two hashes.
+		v = obfMakeOneWayHash(hashAlgo, buffer, 32);
+		copyIntArrayToByteArray(buffer, 32, v, v.length);
 
-		v = obfMakeOneWayHash("md5", buffer, 32);
-		bytes = v.getBytes(StandardCharsets.UTF_8);
-		for (int x = 0; x < 16; ++x) {
-			buffer[x + 32] = bytes[x];
-		}
-//		System.arraycopy(v, 0, buffer, 32, 16);
+		// Hash of two hashes.
+		v = obfMakeOneWayHash(hashAlgo, buffer, 32);
+		copyIntArrayToByteArray(buffer, 48, v, v.length);
 
-		v = obfMakeOneWayHash("md5", buffer, 32);
-		bytes = v.getBytes(StandardCharsets.UTF_8);
-		for (int x = 0; x < 16; ++x) {
-			buffer[x + 48] = bytes[x];
-		}
-//		System.arraycopy(v, 0, buffer, 48, 16);
-
-		var cpIn = 0;
-		var cpOut = 0;
-		var inSb = new StringBuilder(data);
 		final var MAX_PASSWORD_LEN = 50;
+
+		var inSb = new StringBuilder(data);
+		inSb.setLength(MAX_PASSWORD_LEN + 10);
+
 		var outSb = new StringBuilder();
 		outSb.setLength(MAX_PASSWORD_LEN + 100);
 
@@ -780,19 +757,34 @@ public class IRODSUsers {
 //			inSb.setCharAt(cpOut++, '1');
 //		}
 
+		var wheel = new int[26 + 26 + 10 + 15];
+		int j = 0;
+		for (var i = 0; i < 10; ++i) {
+			wheel[j++] = (int) '0' + i;
+		}
+		for (var i = 0; i < 26; ++i) {
+			wheel[j++] = (int) 'A' + i;
+		}
+		for (var i = 0; i < 26; ++i) {
+			wheel[j++] = (int) 'a' + i;
+		}
+		for (var i = 0; i < 15; ++i) {
+			wheel[j++] = (int) '!' + i;
+		}
+
 		var cpKey = 0;
 		var pc = 0; // Previous character.
-		for (;; ++cpIn) {
-			var k = buffer[cpKey];
+		for (int cpIn = 0, cpOut = 0;; ++cpIn) {
+			var k = buffer[cpKey++];
 			if (cpKey > 60) {
-				cpKey = 60;
+				cpKey = 0;
 			}
 
 			var found = false;
-			for (i = 0; i < wheelLen; ++i) {
-				if (wheel[i] == (int) inSb.charAt(cpIn)) {
+			for (var i = 0; i < wheel.length; ++i) {
+				if ((int) inSb.charAt(cpIn) == wheel[i]) {
 					j = i + k + pc;
-					j %= wheelLen;
+					j %= wheel.length;
 					outSb.setCharAt(cpOut++, (char) (wheel[j] & 0xff));
 
 					// "cipherBlockChaining" is not supported by this implementation. Based on the C
@@ -808,9 +800,8 @@ public class IRODSUsers {
 			}
 
 			if (!found) {
-				if (inSb.charAt(cpIn) == '\0') {
-					outSb.setCharAt(cpOut++, '\0');
-					outSb.setLength(cpIn);
+				if (inSb.charAt(cpIn) == 0) {
+					outSb.setLength(cpOut);
 					return outSb.toString();
 				} else {
 					outSb.setCharAt(cpOut++, inSb.charAt(cpIn));
@@ -819,7 +810,7 @@ public class IRODSUsers {
 		}
 	}
 
-	private static String obfMakeOneWayHash(String hashAlgo, int[] buffer, int bufferLength)
+	private static byte[] obfMakeOneWayHash(String hashAlgo, int[] buffer, int bufferLength)
 			throws NoSuchAlgorithmException {
 		// Convert int array to a unsigned byte array.
 		var bufUnsigned = new byte[bufferLength];
@@ -829,21 +820,13 @@ public class IRODSUsers {
 
 		// Hash the buffer.
 		var hasher = MessageDigest.getInstance(hashAlgo);
-		var keyDigest = hasher.digest(bufUnsigned);
+		return hasher.digest(bufUnsigned);
+	}
 
-		// Convert the hashed buffer to a hex sequence.
-		var hexKeySb = new StringBuilder();
-		for (int i = 0; i < 16; ++i) {
-			// From the C implementation.
-//			hexKeySb.append(String.format("%2.2x", keyDigest[i]));
-
-			// This is the correct invocation for Java. The C implementation
-			// likely has a bug in the format specifier (i.e. "%2.2x"). The
-			// precision component doesn't make sense for hex.
-			hexKeySb.append(String.format("%2x", keyDigest[i]));
+	private static void copyIntArrayToByteArray(int[] dst, int dstOffset, byte[] src, int count) {
+		for (int i = 0; i < src.length; ++i) {
+			dst[i + dstOffset] = src[i] & 0xff;
 		}
-
-		return hexKeySb.toString();
 	}
 
 }
