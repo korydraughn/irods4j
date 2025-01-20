@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,7 +38,8 @@ class TestRcExecMyRule {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}

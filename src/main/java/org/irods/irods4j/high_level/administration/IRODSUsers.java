@@ -222,8 +222,9 @@ public class IRODSUsers {
 		if (property instanceof UserPasswordProperty p) {
 			input.arg3 = "password";
 			// TODO Don't rely on obfuscation. Allow clients to send plaintext passwords in
-			// the clear.
-			input.arg4 = obfuscatePassword(p);
+			// the clear. Open an issue in irods/irods for this - assuming we don't have an
+			// issue already.
+			input.arg4 = obfuscatePassword(p, comm.hashAlgorithm);
 		} else if (property instanceof UserTypeProperty p) {
 			input.arg3 = "type";
 			input.arg4 = toString(p.value);
@@ -682,7 +683,7 @@ public class IRODSUsers {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 
-	private static String obfuscatePassword(UserPasswordProperty p) throws NoSuchAlgorithmException {
+	private static String obfuscatePassword(UserPasswordProperty p, String hashAlgo) throws NoSuchAlgorithmException {
 		final var MAX_PASSWORD_LEN = 50;
 
 		var plainTextPasswordSb = new StringBuilder();
@@ -702,7 +703,7 @@ public class IRODSUsers {
 		}
 		keySb.append(p.requesterPassword.substring(0, Math.min(p.requesterPassword.length(), MAX_PASSWORD_LEN)));
 
-		return obfEncodeByKey(plainTextPasswordSb.toString(), keySb.toString(), "md5");
+		return obfEncodeByKey(plainTextPasswordSb.toString(), keySb.toString(), hashAlgo);
 	}
 
 	// This function is a port of obfEncodeByKey() in

@@ -34,7 +34,8 @@ class TestIRODSUsers {
 		XmlUtil.enablePrettyPrinting();
 		JsonUtil.enablePrettyPrinting();
 
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 
@@ -59,7 +60,7 @@ class TestIRODSUsers {
 			pwSb.append(chars.charAt(rnd.nextInt(chars.length())));
 		}
 		var rodsuserPassword = pwSb.toString();
-		
+
 		// Change the rodsuser's password.
 		var prop = new IRODSUsers.UserPasswordProperty();
 		prop.value = rodsuserPassword;
@@ -67,7 +68,8 @@ class TestIRODSUsers {
 		assertDoesNotThrow(() -> IRODSUsers.modifyUser(comm, rodsuser, prop));
 
 		// Show that the rodsuser can authenticate using the updated password.
-		var comm1 = IRODSApi.rcConnect(host, port, rodsuser.name, rodsuser.zone, null, null, null);
+		var comm1 = IRODSApi.rcConnect(host, port, rodsuser.name, rodsuser.zone, Optional.empty(), Optional.empty(),
+				Optional.empty(), Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", prop.value);
 	}

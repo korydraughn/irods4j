@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -31,7 +32,8 @@ class TestRcObjStat {
 		JsonUtil.enablePrettyPrinting();
 		XmlUtil.enablePrettyPrinting();
 
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}

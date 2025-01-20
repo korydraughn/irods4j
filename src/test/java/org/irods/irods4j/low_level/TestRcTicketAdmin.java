@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -25,7 +26,8 @@ class TestRcTicketAdmin {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
@@ -39,7 +41,7 @@ class TestRcTicketAdmin {
 	void testCreateAndDeleteTicket() throws IOException {
 		var ticketName = "irods4j_ticket";
 		var collection = Paths.get("/", zone, "home", username).toString();
-		
+
 		// Create a new ticket on the user's home collection.
 		var input = new TicketAdminInp_PI();
 		input.arg1 = "create";
@@ -50,7 +52,7 @@ class TestRcTicketAdmin {
 		input.arg6 = "";
 		input.KeyValPair_PI = new KeyValPair_PI(); // Optional.
 		input.KeyValPair_PI.ssLen = 0;
-		
+
 		var ec = IRODSApi.rcTicketAdmin(comm, input);
 		assertEquals(ec, 0);
 
@@ -58,7 +60,7 @@ class TestRcTicketAdmin {
 		input.arg1 = "delete";
 		input.arg3 = "";
 		input.arg4 = "";
-		
+
 		ec = IRODSApi.rcTicketAdmin(comm, input);
 		assertEquals(ec, 0);
 	}

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -28,7 +29,8 @@ class TestCollectionOperations {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
@@ -45,7 +47,7 @@ class TestCollectionOperations {
 		input.collName = Paths.get("/", zone, "home", username, "irods4j_test_coll").toString();
 		input.KeyValPair_PI = new KeyValPair_PI(); // Not necessary as shown through testing.
 		input.KeyValPair_PI.ssLen = 0; // Not necessary as shown through testing.
-		
+
 		var ec = IRODSApi.rcCollCreate(comm, input);
 		assertEquals(ec, 0);
 

@@ -5,10 +5,11 @@ import java.io.IOException;
 import java.net.Socket;
 import java.security.KeyStore;
 import java.security.SecureRandom;
-import java.util.Arrays;
+import java.util.Optional;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.logging.log4j.LogManager;
@@ -94,6 +95,8 @@ public class IRODSApi {
 		public int status;
 		public int cookie;
 
+		public String hashAlgorithm;
+
 		public RError_PI rError;
 	}
 
@@ -175,8 +178,24 @@ public class IRODSApi {
 		return mh.intInfo;
 	}
 
+	public static final class ConnectionOptions {
+		public String clientServerNegotiation = "CS_NEG_REFUSE";
+
+		public String sslTruststore;
+		public String sslTruststorePassword;
+		public String sslProtocol;
+
+		public String encryptionAlgorithm = "AES-256-CBC";
+		public int encryptionKeySize = 32;
+		public int encryptionNumHashRounds = 16;
+		public int encryptionSaltSize = 8;
+
+		public String hashAlgorithm = "md5";
+	}
+
 	public static RcComm rcConnect(String host, int port, String clientUsername, String clientUserZone,
-			String proxyUsername, String proxyUserZone, RErrMsg_PI errorInfo) throws Exception {
+			Optional<String> proxyUsername, Optional<String> proxyUserZone, Optional<ConnectionOptions> options,
+			Optional<RErrMsg_PI> errorInfo) throws Exception {
 		if (null == host || host.isEmpty()) {
 			throw new IllegalArgumentException("Host is null or empty");
 		}
@@ -193,16 +212,6 @@ public class IRODSApi {
 			throw new IllegalArgumentException("Client zone is null or empty");
 		}
 
-		// iRODS expects the client and proxy information to be identical if
-		// the proxy user info is not defined.
-		if (null == proxyUsername) {
-			proxyUsername = clientUsername;
-		}
-
-		if (null == proxyUserZone) {
-			proxyUserZone = clientUserZone;
-		}
-
 		RcComm comm = new RcComm();
 		comm.socket = comm.plainSocket = new Socket(host, port);
 
@@ -211,8 +220,8 @@ public class IRODSApi {
 		var sp = new StartupPack_PI();
 		sp.clientUser = comm.clientUsername = clientUsername;
 		sp.clientRcatZone = comm.clientUserZone = clientUserZone;
-		sp.proxyUser = comm.proxyUsername = proxyUsername;
-		sp.proxyRcatZone = comm.proxyUserZone = proxyUserZone;
+		sp.proxyUser = comm.proxyUsername = proxyUsername.orElse(clientUsername);
+		sp.proxyRcatZone = comm.proxyUserZone = proxyUserZone.orElse(clientUserZone);
 		sp.option = appName + "request_server_negotiation";
 		var msgbody = XmlUtil.toXmlString(sp);
 
@@ -230,9 +239,9 @@ public class IRODSApi {
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		if (mh.intInfo < 0) {
-			if (null != errorInfo) {
-				errorInfo.status = mh.intInfo;
-				errorInfo.msg = "StartupPack error";
+			if (errorInfo.isPresent()) {
+				errorInfo.get().status = mh.intInfo;
+				errorInfo.get().msg = "StartupPack error";
 			}
 			return null;
 		}
@@ -300,9 +309,9 @@ public class IRODSApi {
 //		}
 
 		if (mh.intInfo < 0) {
-			if (null != errorInfo) {
-				errorInfo.status = mh.intInfo;
-				errorInfo.msg = "Client-Server negotiation error";
+			if (errorInfo.isPresent()) {
+				errorInfo.get().status = mh.intInfo;
+				errorInfo.get().msg = "Client-Server negotiation error";
 			}
 			return null;
 		}
@@ -315,18 +324,25 @@ public class IRODSApi {
 		comm.status = vers.status;
 		comm.cookie = vers.cookie;
 
+		var connOptions = options.orElse(new ConnectionOptions());
+
+		// Store the desired hashing algorithm in the RcComm. This is needed
+		// for password obfuscation (if the client wishes to manipulate user's
+		// passwords).
+		comm.hashAlgorithm = connOptions.hashAlgorithm;
+
 		// TODO In the C implementation, this is where the network_plugin
 		// is instantiated and the decision to use TLS happens. That decision
 		// is based on the negotiation results, which are stored in the RcComm.
 		// The RcComm holds information about encryption and other parameters.
 		// That's why messages appear to be encrypted following the version
 		// response from the server.
-		enableTLS(comm);
+		enableTLS(comm, connOptions);
 
 		return comm;
 	}
 
-	private static void enableTLS(RcComm comm) throws Exception {
+	private static void enableTLS(RcComm comm, ConnectionOptions options) throws Exception {
 		if (comm.secure) {
 			log.debug("SSL/TLS is already in use.");
 			return;
@@ -345,57 +361,65 @@ public class IRODSApi {
 		// magically enable TLS. Perhaps it should throw an exception when
 		// the RcComm isn't using a secure communication channel?
 
-		// Load the truststore.
-		log.debug("Loading Truststore.");
-		var trustStore = KeyStore.getInstance("JKS");
-		// TODO Make the truststore file configurable.
-		try (var fis = new FileInputStream("/home/kory/eclipse-workspace/irods4j/truststore.jks")) {
-			// TODO Make the password configurable and optional.
-			trustStore.load(fis, "changeit".toCharArray());
+		// This block is for loading self-signed certificates.
+		if (null != options.sslTruststore) {
+			log.debug("Loading Truststore.");
+			var trustStore = KeyStore.getInstance("JKS");
+
+			if (null != options.sslTruststorePassword) {
+				try (var fis = new FileInputStream(options.sslTruststore)) {
+					trustStore.load(fis, options.sslTruststorePassword.toCharArray());
+				}
+			}
+
+			log.debug("Initializing Truststore.");
+			var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			tmf.init(trustStore);
+
+			log.debug("Initializing SSL context.");
+			SSLContext sslContext = null;
+			if (null == options.sslProtocol) {
+				sslContext = SSLContext.getDefault();
+			} else {
+				sslContext = SSLContext.getInstance(options.sslProtocol);
+				sslContext.init(null, tmf.getTrustManagers(), null);
+			}
+
+			// Create SSLSocket and connect.
+			log.debug("Securing socket communication.");
+			var factory = sslContext.getSocketFactory();
+			var host = comm.socket.getInetAddress().getHostAddress();
+			var port = comm.socket.getPort();
+			var autoCloseUnderlyingSocket = true;
+			comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
+			comm.sslSocket.startHandshake();
+			log.debug("Connection secured!");
+		} else {
+			// Handle certificates which live in the normal OS directories.
+			log.debug("Securing socket communication.");
+			var factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+			var host = comm.socket.getInetAddress().getHostAddress();
+			var port = comm.socket.getPort();
+			var autoCloseUnderlyingSocket = true;
+			comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
+			comm.sslSocket.startHandshake();
+			log.debug("Connection secured!");
 		}
-
-		// Initialize the TrustManager.
-		log.debug("Initializing Truststore.");
-		var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-		tmf.init(trustStore);
-
-		// Configure SSLContext with the TrustManager.
-		log.debug("Initializing SSL context.");
-		var sslContext = SSLContext.getInstance("TLSv1.2");
-		sslContext.init(null, tmf.getTrustManagers(), null);
-
-		// Create SSLSocket and connect.
-		log.debug("Upgrading socket to use TLS.");
-		var factory = sslContext.getSocketFactory();
-		var host = comm.socket.getInetAddress().getHostAddress();
-		var port = comm.socket.getPort();
-		var autoCloseUnderlyingSocket = true;
-		comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
-		log.debug("Supported SSL/TLS protocols: {}", Arrays.toString(comm.sslSocket.getSupportedProtocols()));
-		comm.sslSocket.startHandshake();
-		log.debug("Connected securely using self-signed certificate.");
 
 		// See ssl.cpp in irods/irods to understand the following sequence of
 		// operations. The code below follows ssl_client_start() and ssl_agent_start().
 
 		// Send SSL encryption information to server.
-		// TODO Allow developer to configure these options. These are the defaults for
-		// testing.
-		var encryptionAlgorithm = "AES-256-CBC";
-		var encryptionKeySize = 32;
-		var encryptionNumHashRounds = 16;
-		var encryptionSaltSize = 8;
-
 		var mh = new MsgHeader_PI();
-		mh.type = encryptionAlgorithm;
-		mh.msgLen = encryptionKeySize;
-		mh.errorLen = encryptionSaltSize;
-		mh.bsLen = encryptionNumHashRounds;
+		mh.type = options.encryptionAlgorithm;
+		mh.msgLen = options.encryptionKeySize;
+		mh.errorLen = options.encryptionSaltSize;
+		mh.bsLen = options.encryptionNumHashRounds;
 
 		Network.write(comm.sslSocket, mh);
 
 		// Generate a random byte sequence as a key and send it to the server.
-		var key = new byte[encryptionKeySize];
+		var key = new byte[options.encryptionKeySize];
 		var secureRandom = new SecureRandom();
 		secureRandom.nextBytes(key);
 

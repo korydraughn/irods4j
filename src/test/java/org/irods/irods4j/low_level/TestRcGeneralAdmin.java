@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -23,7 +24,8 @@ class TestRcGeneralAdmin {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		comm = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm);
 		IRODSApi.rcAuthenticateClient(comm, "native", password);
 	}
@@ -75,7 +77,8 @@ class TestRcGeneralAdmin {
 		}
 
 		// Create a new connection so the resources can be seen/used.
-		RcComm comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		var comm1 = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", password);
 
@@ -86,10 +89,11 @@ class TestRcGeneralAdmin {
 		input.arg3 = rescName2;
 		input.arg4 = ""; // Context string
 		assertEquals(IRODSApi.rcGeneralAdmin(comm1, input), 0);
-		
+
 		// Refresh the connection so the resources can be seen/used.
 		IRODSApi.rcDisconnect(comm1);
-		comm1 = IRODSApi.rcConnect(host, port, username, zone, null, null, null);
+		comm1 = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+				Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", password);
 
