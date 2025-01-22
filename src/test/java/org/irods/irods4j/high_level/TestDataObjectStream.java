@@ -11,6 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.common.JsonUtil;
+import org.irods.irods4j.common.XmlUtil;
 import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
 import org.junit.jupiter.api.AfterAll;
@@ -30,6 +32,9 @@ class TestDataObjectStream {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
+		XmlUtil.enablePrettyPrinting();
+		JsonUtil.enablePrettyPrinting();
+
 		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
 				Optional.empty());
 		assertNotNull(comm);
@@ -38,6 +43,8 @@ class TestDataObjectStream {
 
 	@AfterAll
 	static void tearDownAfterClass() throws Exception {
+		XmlUtil.disablePrettyPrinting();
+		JsonUtil.disablePrettyPrinting();
 		IRODSApi.rcDisconnect(comm);
 	}
 

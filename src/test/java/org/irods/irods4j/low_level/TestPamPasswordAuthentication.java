@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.util.Optional;
 
 import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.api.IRODSApi.ConnectionOptions;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.XmlUtil;
@@ -27,7 +28,13 @@ class TestPamPasswordAuthentication {
 	static void setUpBeforeClass() throws Exception {
 		XmlUtil.enablePrettyPrinting();
 		JsonUtil.enablePrettyPrinting();
-		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+
+		var options = new ConnectionOptions();
+//		options.clientServerNegotiation = "CS_NEG_REQUIRE";
+//		options.sslProtocol = "TLSv1.2";
+//		options.sslTruststore = "/home/kory/eclipse-workspace/irods4j/truststore.jks";
+//		options.sslTruststorePassword = "changeit";
+		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.of(options),
 				Optional.empty());
 		assertNotNull(comm);
 	}
