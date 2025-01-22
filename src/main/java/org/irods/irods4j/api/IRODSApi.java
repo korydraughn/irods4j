@@ -168,7 +168,7 @@ public class IRODSApi {
 		}
 
 		if (mh.errorLen > 0) {
-			comm.rError = Network.readObject(comm.socket, mh.msgLen, RError_PI.class);
+			comm.rError = Network.readObject(comm.socket, mh.errorLen, RError_PI.class);
 		}
 
 		if (mh.bsLen > 0 && null != bsBuffer) {
