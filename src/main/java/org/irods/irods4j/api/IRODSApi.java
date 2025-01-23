@@ -159,9 +159,6 @@ public class IRODSApi {
 	private static <T> int receiveServerResponse(RcComm comm, Class<T> targetClass, Reference<T> output,
 			ByteArrayReference bsBuffer) throws IOException {
 		var mh = Network.readMsgHeader_PI(comm.socket);
-		if (log.isDebugEnabled()) {
-			log.debug("Received MsgHeader_PI:\n{}", XmlUtil.toXmlString(mh));
-		}
 
 		if (mh.msgLen > 0 && null != targetClass) {
 			output.value = Network.readObject(comm.socket, mh.msgLen, targetClass);

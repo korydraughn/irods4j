@@ -37,34 +37,10 @@ public class IRODSFilesystem {
 	/**
 	 * TODO
 	 */
-	public static final class ObjectStatus {
-	}
-	
-	/**
-	 * TODO
-	 */
-	public static enum Permissions {
-		NULL,
-		READ_METADATA,
-		READ_OBJECT,
-//		READ,
-		CREATE_METADATA,
-		MODIFY_METADATA,
-		DELETE_METADATA,
-		CREATE_OBJECT,
-		MODIFY_OBJECT,
-//		WRITE,
-		DELETE_OBJECT,
-		OWN
-	}
-	
-	/**
-	 * TODO
-	 */
 	public static final class EntityPermission {
 		public String name;
 		public String zone;
-		public Permissions prms;
+		public Permission prms;
 		public String type;
 	}
 	
@@ -194,11 +170,11 @@ public class IRODSFilesystem {
 		return false; // TODO
 	}
 	
-	public static void permissions(RcComm comm, String path, String userOrGroup, Permissions prms) {
+	public static void permissions(RcComm comm, String path, String userOrGroup, Permission prms) {
 		// TODO
 	}
 
-	public static void permissions(AdminTag adminTag, RcComm comm, String path, String userOrGroup, Permissions prms) {
+	public static void permissions(AdminTag adminTag, RcComm comm, String path, String userOrGroup, Permission prms) {
 		// TODO
 	}
 	

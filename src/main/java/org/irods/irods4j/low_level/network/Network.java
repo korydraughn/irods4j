@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,7 +39,7 @@ public class Network {
 		var out = socket.getOutputStream();
 		out.write(msg.getBytes());
 		out.flush();
-		log.debug("Wrote {}", msg);
+		log.debug("Wrote:\n{}", msg);
 	}
 
 	public static <T> void writeJson(Socket socket, T object) throws IOException {
@@ -46,7 +47,7 @@ public class Network {
 		var out = socket.getOutputStream();
 		out.write(msg.getBytes());
 		out.flush();
-		log.debug("Wrote {}", msg);
+		log.debug("Wrote:\n{}", msg);
 	}
 
 	public static MsgHeader_PI readMsgHeader_PI(Socket socket) throws IOException {
@@ -60,17 +61,27 @@ public class Network {
 		var msgHeaderLength = bbuf.getInt();
 
 		var msgHeaderBytes = in.readNBytes(msgHeaderLength);
+		if (log.isDebugEnabled()) {
+			log.debug("Received:\n{}", new String(msgHeaderBytes, StandardCharsets.UTF_8));
+		}
 		return XmlUtil.fromBytes(msgHeaderBytes, MsgHeader_PI.class);
 	}
 
 	public static <T> T readObject(Socket socket, int size, Class<T> clazz) throws IOException {
 		var in = socket.getInputStream();
 		var bytes = in.readNBytes(size);
+		if (log.isDebugEnabled()) {
+			log.debug("Received:\n{}", new String(bytes, StandardCharsets.UTF_8));
+		}
 		return XmlUtil.fromBytes(bytes, clazz);
 	}
 
 	public static byte[] readBytes(Socket socket, int size) throws IOException {
-		return socket.getInputStream().readNBytes(size);
+		var bytes = socket.getInputStream().readNBytes(size);
+		if (log.isDebugEnabled()) {
+			log.debug("Received:\n{}", new String(bytes, StandardCharsets.UTF_8));
+		}
+		return bytes;
 	}
 
 	public static void writeBytes(Socket socket, byte[] bytes) throws IOException {
