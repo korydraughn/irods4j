@@ -8,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollEnt_PI;
@@ -89,28 +88,22 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry>, AutoC
 		collOptions = options;
 	}
 
-	/**
-	 * Do not use directly.
-	 */
 	@Override
 	public Iterator<CollectionEntry> iterator() {
-		try {
-			return new CollectionEntryIterator(this);
-		} catch (IOException e) {
-			log.error(e.getMessage());
-			return null;
-		} catch (IRODSException e) {
-			log.error(e.getMessage());
-			return null;
-		}
+		return new CollectionEntryIterator(this);
 	}
 
 	/**
-	 * Do not use directly.
+	 * Closes the collection handle if open.
+	 * 
+	 * The iterator can be re-opened after this operation.
+	 * 
+	 * @since 0.1.0
 	 */
 	@Override
 	public void close() throws Exception {
 		if (collHandle >= 0) {
+			// TODO Replace this with the rcl*Collection functions for performance.
 			var ec = IRODSApi.rcCloseCollection(comm, collHandle);
 			log.debug("rcCloseCollection returned [{}].", ec);
 			collHandle = -1;
@@ -118,13 +111,15 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry>, AutoC
 	}
 
 	/**
-	 * Do not use directly.
+	 * The class providing the iterator implementation over a collection.
+	 * 
+	 * @since 0.1.0
 	 */
 	public static final class CollectionEntryIterator implements Iterator<CollectionEntry> {
 
 		private IRODSCollectionIterator iter;
 
-		private CollectionEntryIterator(IRODSCollectionIterator iter) throws IOException, IRODSException {
+		private CollectionEntryIterator(IRODSCollectionIterator iter) {
 			this.iter = iter;
 
 			// The iterator is already open, so there's nothing to do. The iterator will
@@ -141,24 +136,33 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry>, AutoC
 			input.KeyValPair_PI = new KeyValPair_PI();
 			input.KeyValPair_PI.ssLen = 0;
 
-			var ec = IRODSApi.rcOpenCollection(iter.comm, input);
-			log.debug("rcOpenCollection returned [{}].", ec);
-			if (ec < 0) {
-				throw new IRODSException(ec, "rcOpenCollection error");
-			}
+			try {
+				// TODO Replace this with the rcl*Collection functions for performance.
+				var ec = IRODSApi.rcOpenCollection(iter.comm, input);
+				log.debug("rcOpenCollection returned [{}].", ec);
+				if (ec < 0) {
+					return;
+				}
 
-			iter.collHandle = ec;
-			iter.collEntry = new Reference<>();
+				iter.collHandle = ec;
+				iter.collEntry = new Reference<>();
+			} catch (IOException e) {
+				log.error(e.getMessage());
+			}
 		}
 
 		@Override
 		public boolean hasNext() {
+			if (iter.collHandle < 0) {
+				return false;
+			}
+
 			try {
-				// TODO Replace this with the rcl* versions.
+				// TODO Replace this with the rcl*Collection functions for performance.
 				var ec = IRODSApi.rcReadCollection(iter.comm, iter.collHandle, iter.collEntry);
 				log.debug("rcReadCollection returned [{}].", ec);
 				return ec >= 0;
-			} catch (Exception e) {
+			} catch (IOException e) {
 				log.error(e.getMessage());
 				return false;
 			}

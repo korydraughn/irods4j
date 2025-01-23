@@ -2,7 +2,7 @@ package org.irods.irods4j.high_level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Paths;
@@ -90,7 +90,9 @@ class TestIRODSCollectionIterator {
 			}
 
 			var collIterator = new IRODSCollectionIterator(conn.getRcComm(), path);
-			assertNull(collIterator.iterator());
+			var iter = collIterator.iterator();
+			assertNotNull(iter);
+			assertFalse(iter.hasNext());
 		} finally {
 			// Remove the data object.
 			var input = new DataObjInp_PI();
