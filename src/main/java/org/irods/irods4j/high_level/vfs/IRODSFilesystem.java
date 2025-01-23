@@ -1,5 +1,7 @@
 package org.irods.irods4j.high_level.vfs;
 
+import java.nio.file.Paths;
+
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
 
@@ -33,6 +35,14 @@ public class IRODSFilesystem {
 	 */
 	public static final class CopyOptions {
 		public static final int NONE = 0;
+		public static final int SKIP_EXISTING = 1;
+		public static final int OVERWRITE_EXISTING = 2;
+		public static final int UPDATE_EXISTING = 4;
+		public static final int RECURSIVE = 8;
+		public static final int COLLECTIONS_ONLY = 16;
+
+		// Reserved for the implementation.
+		private static final int IN_RECURSIVE_COPY = 32;
 	}
 	
 	/**
@@ -195,11 +205,22 @@ public class IRODSFilesystem {
 		return null; // TODO
 	}
 
+	/**
+	 * Checks if the filesystem object's type is known.
+	 * 
+	 * @param status The filesystem object's status.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean statusKnown(ObjectStatus status) {
-		return false; // TODO
+		return status.getType() != ObjectType.NONE;
 	}
 
 	public static String dataObjectChecksum(RcComm comm, String path) {
+		return null; // TODO
+	}
+	
+	private static String extractZoneFromPath(String path) {
 		return null; // TODO
 	}
 
