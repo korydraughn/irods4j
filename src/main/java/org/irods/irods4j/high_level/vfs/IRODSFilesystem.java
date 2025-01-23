@@ -1,6 +1,7 @@
 package org.irods.irods4j.high_level.vfs;
 
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
 
 /**
  * TODO
@@ -107,7 +108,7 @@ public class IRODSFilesystem {
 	}
 	
 	public static boolean isCollection(ObjectStatus status) {
-		return false; // TODO
+		return status.getType() == ObjectType.COLLECTION;
 	}
 
 	public static boolean isCollection(RcComm comm, String path) {
@@ -115,7 +116,7 @@ public class IRODSFilesystem {
 	}
 
 	public static boolean isDataObject(ObjectStatus status) {
-		return false; // TODO
+		return status.getType() == ObjectType.DATA_OBJECT;
 	}
 
 	public static boolean isDataObject(RcComm comm, String path) {
@@ -123,7 +124,7 @@ public class IRODSFilesystem {
 	}
 
 	public static boolean isOther(ObjectStatus status) {
-		return false; // TODO
+		return status.getType() == ObjectType.UNKNOWN;
 	}
 
 	public static boolean isOther(RcComm comm, String path) {
