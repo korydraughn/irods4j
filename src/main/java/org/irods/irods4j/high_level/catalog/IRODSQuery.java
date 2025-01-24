@@ -1,17 +1,21 @@
 package org.irods.irods4j.high_level.catalog;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -179,6 +183,31 @@ public class IRODSQuery {
 	/**
 	 * Executes a SpecificQuery and process pages of rows iteratively.
 	 * 
+	 * The query is executed against the zone specified.
+	 * 
+	 * This function may result in multiple API calls to the server. To continue
+	 * processing rows, return true from the {@code pageHandler}. To end processing
+	 * of the rows early, return false from the {@code pageHandler}.
+	 * 
+	 * @param comm              A connection to an iRODS server.
+	 * @param zone              The zone to execute the query against.
+	 * @param specificQueryName The name of the SpecificQuery to execute.
+	 * @param bindArgs          The list of bind arguments.
+	 * @param pageHandler       The callback used to process a list of rows.
+	 * 
+	 * @throws IOException    If a network error occurs.
+	 * @throws IRODSException If the iRODS API operation fails.
+	 * 
+	 * @since 0.1.0
+	 */
+	public static void executeSpecificQuery(RcComm comm, String zone, String specificQueryName, List<String> bindArgs,
+			Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
+		executeSpecificQueryImpl(comm, Optional.of(zone), specificQueryName, bindArgs, pageHandler);
+	}
+
+	/**
+	 * Executes a SpecificQuery and process pages of rows iteratively.
+	 * 
 	 * This function may result in multiple API calls to the server. To continue
 	 * processing rows, return true from the {@code pageHandler}. To end processing
 	 * of the rows early, return false from the {@code pageHandler}.
@@ -195,6 +224,11 @@ public class IRODSQuery {
 	 */
 	public static void executeSpecificQuery(RcComm comm, String specificQueryName, List<String> bindArgs,
 			Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
+		executeSpecificQueryImpl(comm, Optional.empty(), specificQueryName, bindArgs, pageHandler);
+	}
+
+	private static void executeSpecificQueryImpl(RcComm comm, Optional<String> zone, String specificQueryName,
+			List<String> bindArgs, Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
 		}
@@ -214,6 +248,19 @@ public class IRODSQuery {
 		var input = new SpecificQueryInp_PI();
 		input.sql = specificQueryName;
 		input.maxRows = 256;
+
+		zone.ifPresent(value -> {
+			if (null == value || value.isEmpty()) {
+				throw new IllegalArgumentException("Zone is null or empty");
+			}
+
+			input.KeyValPair_PI = new KeyValPair_PI();
+			input.KeyValPair_PI.ssLen = 1;
+			input.KeyValPair_PI.keyWord = new ArrayList<>();
+			input.KeyValPair_PI.svalue = new ArrayList<>();
+			input.KeyValPair_PI.keyWord.add(IRODSKeywords.ZONE);
+			input.KeyValPair_PI.svalue.add(value);
+		});
 
 		for (int i = 0; i < 10 && i < bindArgs.size(); ++i) {
 			switch (i) {
