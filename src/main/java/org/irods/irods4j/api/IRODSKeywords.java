@@ -9,6 +9,7 @@ public class IRODSKeywords {
 	public static final String CHKSUM = "chksum";
 	public static final String CLOSE_OPEN_REPLICAS = "close_open_replicas";
 	public static final String COLLECTION = "collection";
+	public static final String COLLECTION_MTIME = "collectionMtime";
 	public static final String COPIES = "copies";
 	public static final String FILE_PATH = "filePath";
 	public static final String FORCE_CHKSUM = "forceChksum";

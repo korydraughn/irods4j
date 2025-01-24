@@ -2,7 +2,7 @@ package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 public class RodsObjStat_PI {
 
-	public double objSize;
+	public long objSize; // This is a double in the C implementation.
 	public int objType;
 	public int dataMode;
 	public String dataId;
