@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -166,16 +167,19 @@ public class IRODSFilesystem {
 		}
 
 		var input = new DataObjCopyInp_PI();
-		input.DataObjInp_PI = new DataObjInp_PI[2];
+		input.DataObjInp_PI = new DataObjInp_PI[] { new DataObjInp_PI(), new DataObjInp_PI() };
 
 		var srcInput = input.DataObjInp_PI[0];
 		srcInput.objPath = from;
+//		srcInput.oprType = 10; // COPY_SRC - see dataObjInpOut.h
+		srcInput.KeyValPair_PI = new KeyValPair_PI();
+		srcInput.KeyValPair_PI.ssLen = 0;
 
 		var dstInput = input.DataObjInp_PI[1];
 		dstInput.objPath = to;
+//		dstInput.oprType = 9; // COPY_DEST - see dataObjInpOut.h
 		dstInput.KeyValPair_PI = new KeyValPair_PI();
-		dstInput.KeyValPair_PI.keyWord = new ArrayList<>();
-		dstInput.KeyValPair_PI.svalue = new ArrayList<>();
+		dstInput.KeyValPair_PI.ssLen = 0;
 
 		var s = status(comm, to);
 		if (exists(s)) {
@@ -195,6 +199,8 @@ public class IRODSFilesystem {
 
 			if (CopyOptions.OVERWRITE_EXISTING == copyOptions) {
 				++dstInput.KeyValPair_PI.ssLen;
+				dstInput.KeyValPair_PI.keyWord = new ArrayList<>();
+				dstInput.KeyValPair_PI.svalue = new ArrayList<>();
 				dstInput.KeyValPair_PI.keyWord.add(IRODSKeywords.FORCE_FLAG);
 				dstInput.KeyValPair_PI.svalue.add("");
 			} else if (CopyOptions.UPDATE_EXISTING == copyOptions) {
@@ -203,6 +209,8 @@ public class IRODSFilesystem {
 				}
 
 				++dstInput.KeyValPair_PI.ssLen;
+				dstInput.KeyValPair_PI.keyWord = new ArrayList<>();
+				dstInput.KeyValPair_PI.svalue = new ArrayList<>();
 				dstInput.KeyValPair_PI.keyWord.add(IRODSKeywords.FORCE_FLAG);
 				dstInput.KeyValPair_PI.svalue.add("");
 			}
@@ -640,7 +648,7 @@ public class IRODSFilesystem {
 //		var newPathStat = status(comm, newPath);
 
 		var input = new DataObjCopyInp_PI();
-		input.DataObjInp_PI = new DataObjInp_PI[2];
+		input.DataObjInp_PI = new DataObjInp_PI[] { new DataObjInp_PI(), new DataObjInp_PI() };
 		input.DataObjInp_PI[0].objPath = oldPath;
 		input.DataObjInp_PI[1].objPath = newPath;
 
@@ -793,7 +801,15 @@ public class IRODSFilesystem {
 	}
 
 	private static void throwIfPathLengthExceedsLimit(String path) throws IRODSFilesystemException {
-		if (path.length() > 0) {
+		// Defined in irods/irods/lib/core/include/irods/rodsDef.h.
+		//
+		// 1088 = MAX_NAME_LEN
+		// = MAX_PATH_ALLOWED + 64
+		// = 1024 + 64
+		//
+		// The true max path length is MAX_NAME_LEN - 1, to accomodate space for the
+		// null-terminating byte.
+		if (path.length() > 1087) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.USER_PATH_EXCEEDS_MAX, "Path exceeds maximum length",
 					path);
 		}
@@ -856,14 +872,38 @@ public class IRODSFilesystem {
 			// TODO Open issue for this GenQuery2 query. It uses the wrong table alias for
 			// DATA_ACCESS_USER_ZONE. The workaround is to use DATA_ACCESS_USER_ID and
 			// resolve the user name, user zone, and user type against it.
+//			var query = String.format(
+//					"select DATA_ACCESS_USER_NAME, DATA_ACCESS_USER_ZONE, DATA_ACCESS_PERM_NAME, USER_TYPE where COLL_NAME = '%' and DATA_NAME = '%s'",
+//					fspath.getParent().toString(), fspath.getFileName().toString());
+//			for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+//				var ep = new EntityPermission();
+//				ep.name = row.get(0);
+//				ep.zone = row.get(1);
+//				ep.prms = toPermissionEnum(row.get(2));
+//				ep.type = row.get(3);
+//				perms.add(ep);
+//			}
+
+			// TODO THE WORKAROUND.
+
+			// First, get the user id and permissions on the data object.
+			var map = new HashMap<String, String>();
 			var query = String.format(
-					"select DATA_ACCESS_USER_NAME, DATA_ACCESS_USER_ZONE, DATA_ACCESS_PERM_NAME, USER_TYPE where COLL_NAME = '%' and DATA_NAME = '%s'",
+					"select DATA_ACCESS_USER_ID, DATA_ACCESS_PERM_NAME where COLL_NAME = '%s' and DATA_NAME = '%s'",
 					fspath.getParent().toString(), fspath.getFileName().toString());
 			for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+				map.put(row.get(0), row.get(1));
+			}
+
+			// Now, retrieve the user information using the user id of each user.
+			query = String.format("select USER_ID, USER_NAME, USER_ZONE, USER_TYPE where USER_ID in ('%s')",
+					String.join("', '", map.keySet()));
+			log.debug("Query for data object permissions = [{}]", query);
+			for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
 				var ep = new EntityPermission();
-				ep.name = row.get(0);
-				ep.zone = row.get(1);
-				ep.prms = toPermissionEnum(row.get(2));
+				ep.name = row.get(1);
+				ep.zone = row.get(2);
+				ep.prms = toPermissionEnum(map.get(row.get(0)));
 				ep.type = row.get(3);
 				perms.add(ep);
 			}
@@ -894,7 +934,7 @@ public class IRODSFilesystem {
 		}
 
 		var zone = extractZoneFromPath(path);
-		var query = String.format("select COLL_INHERITANCE where COLL_NAME = '%'", path);
+		var query = String.format("select COLL_INHERITANCE where COLL_NAME = '%s'", path);
 		for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
 			return "1".equals(row.get(0));
 		}
