@@ -1,16 +1,23 @@
 package org.irods.irods4j.high_level;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.Random;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.XmlUtil;
 import org.irods.irods4j.high_level.administration.IRODSUsers;
+import org.irods.irods4j.high_level.administration.IRODSUsers.Group;
 import org.irods.irods4j.high_level.administration.IRODSUsers.User;
 import org.irods.irods4j.high_level.administration.IRODSUsers.UserType;
 import org.irods.irods4j.high_level.administration.IRODSZones.ZoneType;
@@ -19,6 +26,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class TestIRODSUsers {
+
+	static final Logger log = LogManager.getLogger();
 
 	static String host = "localhost";
 	static int port = 1247;
@@ -73,6 +82,15 @@ class TestIRODSUsers {
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", prop.value);
 		IRODSApi.rcDisconnect(comm1);
+	}
+
+	@Test
+	void testRetrieveAllUsersInASpecificGroup() throws IOException, IRODSException {
+		var users = IRODSUsers.users(comm, new Group("public"));
+		users.forEach(u -> log.debug("user = {}#{}", u.name, u.zone));
+		assertNotNull(users);
+		assertFalse(users.isEmpty());
+		assertTrue(users.stream().anyMatch(u -> username.equals(u.name) && zone.equals(u.zone)));
 	}
 
 }

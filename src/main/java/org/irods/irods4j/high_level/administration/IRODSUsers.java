@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.irods.irods4j.api.GenQuery1Columns;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
@@ -15,6 +16,8 @@ import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.high_level.administration.IRODSZones.ZoneType;
+import org.irods.irods4j.high_level.catalog.IRODSQuery;
+import org.irods.irods4j.high_level.catalog.IRODSQuery.GenQuery1QueryArgs;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
@@ -435,37 +438,30 @@ public class IRODSUsers {
 	}
 
 	public static List<User> users(RcComm comm, Group group) throws IOException, IRODSException {
-		// TODO Disabled until GenQuery2 provides better support for groups.
-		throw new UnsupportedOperationException("Not implemented yet");
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
 
-//		if (null == comm) {
-//			throw new IllegalArgumentException("RcComm is null");
-//		}
-//
-//		if (null == group) {
-//			throw new IllegalArgumentException("Group is null");
-//		}
-//
-//		var input = new Genquery2Input_PI();
-//		input.query_string = String.format(
-//				"select USER_NAME, USER_ZONE where USER_TYPE != 'rodsgroup' and USER_GROUP_NAME = '%s'", group.name);
-//
-//		var output = new Reference<String>();
-//
-//		var ec = IRODSApi.rcGenQuery2(comm, input, output);
-//		if (ec < 0) {
-//			throw new IRODSException(ec, "rcGenQuery2 error");
-//		}
-//
-//		var users = new ArrayList<User>();
-//		var typeRef = new TypeReference<List<List<String>>>() {
-//		};
-//		var rows = JsonUtil.fromJsonString(output.value, typeRef);
-//		if (!rows.isEmpty()) {
-//			rows.forEach(row -> users.add(new User(row.get(0), Optional.of(row.get(1)))));
-//		}
-//
-//		return users;
+		if (null == group) {
+			throw new IllegalArgumentException("Group is null");
+		}
+
+		var input = new GenQuery1QueryArgs();
+		// select USER_NAME, USER_ZONE ...
+		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_NAME);
+		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_ZONE);
+		// where USER_TYPE != 'rodsgroup' and USER_GROUP_NAME = '<name>'
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_TYPE, "!= 'rodsgroup'");
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_GROUP_NAME, String.format("= '%s'", group.name));
+
+		var users = new ArrayList<User>();
+
+		IRODSQuery.executeGenQuery1(comm, input, row -> {
+			users.add(new User(row.get(0), Optional.of(row.get(1))));
+			return true;
+		});
+
+		return users;
 	}
 
 	public static List<Group> groups(RcComm comm) throws IOException, IRODSException {
