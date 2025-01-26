@@ -2,6 +2,7 @@ package org.irods.irods4j.high_level.catalog;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import java.util.function.Function;
 
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.api.IRODSErrorCodes;
 import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
@@ -201,7 +203,7 @@ public class IRODSQuery {
 	 * @since 0.1.0
 	 */
 	public static void executeSpecificQuery(RcComm comm, String zone, String specificQueryName, List<String> bindArgs,
-			Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
+			Function<List<String>, Boolean> pageHandler) throws IOException, IRODSException {
 		executeSpecificQueryImpl(comm, Optional.of(zone), specificQueryName, bindArgs, pageHandler);
 	}
 
@@ -223,12 +225,12 @@ public class IRODSQuery {
 	 * @since 0.1.0
 	 */
 	public static void executeSpecificQuery(RcComm comm, String specificQueryName, List<String> bindArgs,
-			Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
+			Function<List<String>, Boolean> pageHandler) throws IOException, IRODSException {
 		executeSpecificQueryImpl(comm, Optional.empty(), specificQueryName, bindArgs, pageHandler);
 	}
 
 	private static void executeSpecificQueryImpl(RcComm comm, Optional<String> zone, String specificQueryName,
-			List<String> bindArgs, Function<String[][], Boolean> pageHandler) throws IOException, IRODSException {
+			List<String> bindArgs, Function<List<String>, Boolean> rowHandler) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
 		}
@@ -302,29 +304,48 @@ public class IRODSQuery {
 		while (true) {
 			var ec = IRODSApi.rcSpecificQuery(comm, input, output);
 			if (ec < 0) {
-				if (/* CAT_NO_ROWS_FOUND */ -808000 == ec) {
+				if (IRODSErrorCodes.CAT_NO_ROWS_FOUND == ec) {
 					break;
 				}
 				throw new IRODSException(ec, "rcGenQuery2 error");
 			}
 
-			// Transform the resultset into a multi-dimentional
-			var rows = new String[output.value.rowCnt][output.value.attriCnt];
-			for (var c = 0; c < output.value.attriCnt; ++c) {
-				// Get an attribute list.
-				// Each SqlResult_PI represents a column containing one piece of
-				// of information for each row.
-				var sqlResult = output.value.SqlResult_PI.get(c);
-				for (var r = 0; r < output.value.rowCnt; ++r) {
-					rows[r][c] = sqlResult.value.get(r);
-				}
-			}
+			// TODO This works.
+//			// Transform the resultset into a multi-dimentional array.
+//			var rows = new String[output.value.rowCnt][output.value.attriCnt];
+//			for (var c = 0; c < output.value.attriCnt; ++c) {
+//				// Get an attribute list.
+//				// Each SqlResult_PI represents a column containing one piece of
+//				// of information for each row.
+//				var sqlResult = output.value.SqlResult_PI.get(c);
+//				for (var r = 0; r < output.value.rowCnt; ++r) {
+//					rows[r][c] = sqlResult.value.get(r);
+//				}
+//			}
+//
+//			// A return value of false instructs the implementation to stop
+//			// iterating over the results. This gives the caller the opportunity
+//			// to exit the loop early.
+//			if (!pageHandler.apply(rows)) {
+//				break;
+//			}
 
-			// A return value of false instructs the implementation to stop
-			// iterating over the results. This gives the caller the opportunity
-			// to exit the loop early.
-			if (!pageHandler.apply(rows)) {
-				break;
+			var row = new ArrayList<String>();
+			for (var r = 0; r < output.value.rowCnt; ++r) {
+				for (var c = 0; c < output.value.attriCnt; ++c) {
+					// Get an attribute list. Each SqlResult_PI represents a column containing one
+					// piece of of information for each row.
+					var sqlResult = output.value.SqlResult_PI.get(c);
+					row.add(sqlResult.value.get(r));
+				}
+
+				// A return value of false instructs the implementation to stop iterating over
+				// the results. This gives the caller the opportunity to exit the loop early.
+				if (!rowHandler.apply(Collections.unmodifiableList(row))) {
+					return;
+				}
+
+				row.clear();
 			}
 
 			// There's no more data, exit the loop.

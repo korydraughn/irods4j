@@ -85,28 +85,25 @@ class TestIRODSQuery {
 	void testIRODSQueryHandlesSpecificQueries() throws Exception {
 		var bindArgs = Arrays.asList(username);
 
-		IRODSQuery.executeSpecificQuery(conn.getRcComm(), "listGroupsForUser", bindArgs, rows -> {
+		IRODSQuery.executeSpecificQuery(conn.getRcComm(), "listGroupsForUser", bindArgs, row -> {
 			// On a fresh iRODS install, we expect the "rods" user to be a member of the
 			// "public" group only.
-			assertEquals(rows.length, 1);
-			assertEquals(rows[0].length, 2);
+			assertEquals(row.size(), 2);
 
 			var sb = new StringBuilder();
-			for (var r = 0; r < rows.length; ++r) {
-				sb.append('[');
-				for (var c = 0; c < rows[r].length; ++c) {
-					if (c > 0) {
-						sb.append(", ");
-					}
-					sb.append(rows[r][c]);
+			sb.append('[');
+			for (var c = 0; c < row.size(); ++c) {
+				if (c > 0) {
+					sb.append(", ");
 				}
-				sb.append(']');
-				sb.append('\n');
+				sb.append(row.get(c));
 			}
+			sb.append(']');
+			sb.append('\n');
 
 			assertTrue(sb.toString().contains(", public"));
 
-			// Continue iterating through the results, one page at a time. If false is
+			// Continue iterating through the results, one row at a time. If false is
 			// returned, iteration stops and the rest of the results are discarded.
 			return true;
 		});

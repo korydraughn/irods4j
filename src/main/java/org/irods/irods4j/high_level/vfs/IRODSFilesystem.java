@@ -912,15 +912,13 @@ public class IRODSFilesystem {
 		if (/* COLL_OBJ_T */ 2 == objectType) {
 			var zone = extractZoneFromPath(path);
 			var bindArgs = Arrays.asList(path);
-			IRODSQuery.executeSpecificQuery(comm, zone, "ShowCollAcls", bindArgs, rows -> {
-				for (var row : rows) {
-					var ep = new EntityPermission();
-					ep.name = row[0];
-					ep.zone = row[1];
-					ep.prms = toPermissionEnum(row[2]);
-					ep.type = row[3];
-					perms.add(ep);
-				}
+			IRODSQuery.executeSpecificQuery(comm, zone, "ShowCollAcls", bindArgs, row -> {
+				var ep = new EntityPermission();
+				ep.name = row.get(0);
+				ep.zone = row.get(1);
+				ep.prms = toPermissionEnum(row.get(2));
+				ep.type = row.get(3);
+				perms.add(ep);
 				return true;
 			});
 		}
