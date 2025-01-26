@@ -27,7 +27,8 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.TransferStat_PI;
 
 /**
- * TODO
+ * A class providing high-level functions for working with collections and data
+ * objects.
  * 
  * @since 0.1.0
  */
@@ -36,25 +37,18 @@ public class IRODSFilesystem {
 	private static final Logger log = LogManager.getLogger();
 
 	/**
-	 * TODO
+	 * Defines values which influence the behavior of a remove operation.
+	 * 
+	 * @since 0.1.0
 	 */
 	public static enum RemoveOptions {
 		NONE, NO_TRASH
 	}
 
 	/**
-	 * TODO
-	 */
-	public static final class ExtendedRemoveOptions {
-		public boolean noTrash = false;
-		public boolean verbose = false;
-		public boolean progress = false;
-		public boolean recursive = false;
-		public boolean unregister = false;
-	}
-
-	/**
-	 * TODO
+	 * Defines bitmask values which influence the behavior of a copy operation.
+	 * 
+	 * @since 0.1.0
 	 */
 	public static final class CopyOptions {
 		public static final int NONE = 0;
@@ -75,10 +69,26 @@ public class IRODSFilesystem {
 	}
 
 	/**
-	 * TODO
+	 * A value used to indicate that the operation must be executed using rodsadmin
+	 * level privileges.
+	 * 
+	 * @since 0.1.0
 	 */
 	public static final AdminTag asAdmin = new AdminTag();
 
+	/**
+	 * 
+	 * @param comm
+	 * @param from
+	 * @param to
+	 * @param copyOptions
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void copy(RcComm comm, String from, String to, int copyOptions)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -148,11 +158,38 @@ public class IRODSFilesystem {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param from
+	 * @param to
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void copy(RcComm comm, String from, String to)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		copy(comm, from, to, CopyOptions.NONE);
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param from
+	 * @param to
+	 * @param copyOptions
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean copyDataObject(RcComm comm, String from, String to, int copyOptions)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -226,11 +263,37 @@ public class IRODSFilesystem {
 		return true;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param from
+	 * @param to
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean copyDataObject(RcComm comm, String from, String to)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		return copyDataObject(comm, from, to, CopyOptions.NONE);
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean createCollection(RcComm comm, String path) throws IOException, IRODSFilesystemException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
@@ -247,6 +310,20 @@ public class IRODSFilesystem {
 		return true;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * @param existingPath
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean createCollection(RcComm comm, String path, String existingPath)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -264,6 +341,7 @@ public class IRODSFilesystem {
 
 		createCollection(comm, path);
 
+		// TODO Use atomic ACLs API.
 		var usernameSb = new StringBuilder();
 		for (var perm : s.getPermissions()) {
 			usernameSb.delete(0, usernameSb.length());
@@ -274,6 +352,19 @@ public class IRODSFilesystem {
 		return true;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean createCollections(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -296,15 +387,46 @@ public class IRODSFilesystem {
 		return IRODSApi.rcCollCreate(comm, input) == 0;
 	}
 
+	/**
+	 * Checks if a filesystem object is known to the catalog.
+	 * 
+	 * @param status The {@code ObjectStatus} of the filesystem object.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean exists(ObjectStatus status) {
 		return statusKnown(status) && status.getType() != ObjectType.NOT_FOUND;
 	}
 
+	/**
+	 * Checks if a filesystem object is known to the catalog.
+	 * 
+	 * @param comm A connection to the iRODS server.
+	 * @param path A path identifying the filesystem object.
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean exists(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		return exists(status(comm, path));
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isCollectionRegistered(RcComm comm, String path) throws IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
@@ -317,6 +439,18 @@ public class IRODSFilesystem {
 		return !IRODSQuery.executeGenQuery(comm, zone, query).isEmpty();
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isDataObjectRegistered(RcComm comm, String path) throws IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
@@ -330,6 +464,19 @@ public class IRODSFilesystem {
 		return !IRODSQuery.executeGenQuery(comm, zone, query).isEmpty();
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path1
+	 * @param path2
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean equivalent(RcComm comm, String path1, String path2) throws IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path1, "Path 1 is null or empty");
@@ -357,6 +504,19 @@ public class IRODSFilesystem {
 		return p1Info.id == p2Info.id;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static long dataObjectSize(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -396,10 +556,30 @@ public class IRODSFilesystem {
 		return size;
 	}
 
+	/**
+	 * Checks if the filesystem object is a collection.
+	 * 
+	 * @param status The {@code ObjectStatus} of the filesystem object.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isCollection(ObjectStatus status) {
 		return status.getType() == ObjectType.COLLECTION;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isCollection(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -407,10 +587,29 @@ public class IRODSFilesystem {
 		return isCollection(status(comm, path));
 	}
 
+	/**
+	 * 
+	 * @param status
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isDataObject(ObjectStatus status) {
 		return status.getType() == ObjectType.DATA_OBJECT;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isDataObject(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -418,10 +617,29 @@ public class IRODSFilesystem {
 		return isDataObject(status(comm, path));
 	}
 
+	/**
+	 * 
+	 * @param status
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isOther(ObjectStatus status) {
 		return status.getType() == ObjectType.UNKNOWN;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isOther(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -429,6 +647,18 @@ public class IRODSFilesystem {
 		return isOther(status(comm, path));
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isSpecialCollection(RcComm comm, String path) throws IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
@@ -443,6 +673,19 @@ public class IRODSFilesystem {
 		return false;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * 
+	 * @return
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean isEmpty(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -458,6 +701,24 @@ public class IRODSFilesystem {
 		return isCollectionEmpty(comm, path);
 	}
 
+	/**
+	 * Returns the time of the last modification to a filesystem object as epoch
+	 * seconds.
+	 * 
+	 * If the filesystem object identifies a data object, only good replicas will be
+	 * considered. If no good replicas exists, an exception will be thrown.
+	 * 
+	 * @param comm A connection to the iRODS server.
+	 * @param path The logical path identifying a collection or data object.
+	 * 
+	 * @return The modification time as seconds since epoch.
+	 * 
+	 * @throws IRODSFilesystemException
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static long lastWriteTime(RcComm comm, String path)
 			throws IRODSFilesystemException, IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
@@ -488,6 +749,17 @@ public class IRODSFilesystem {
 		throw new IRODSFilesystemException(IRODSErrorCodes.CAT_NO_ROWS_FOUND, "Modify time unavailable", path);
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param path
+	 * @param newModifyTime
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void lastWriteTime(RcComm comm, String path, long newModifyTime) throws IOException, IRODSException {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
@@ -1059,6 +1331,14 @@ public class IRODSFilesystem {
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcModAccessControl error", logicalPath);
 		}
+	}
+
+	private static final class ExtendedRemoveOptions {
+		public boolean noTrash = false;
+		public boolean verbose = false;
+		public boolean progress = false;
+		public boolean recursive = false;
+		public boolean unregister = false;
 	}
 
 	private static boolean removeImpl(RcComm comm, String path, ExtendedRemoveOptions removeOptions)

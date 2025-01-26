@@ -99,7 +99,7 @@ public class IRODSQuery {
 	}
 
 	/**
-	 * Executes a GenQuery2 and returns the query results.
+	 * Executes a GenQuery2 query and returns the query results.
 	 * 
 	 * The query is executed against the zone which the connected iRODS server
 	 * resides.
@@ -138,7 +138,7 @@ public class IRODSQuery {
 	}
 
 	/**
-	 * Executes a GenQuery2 and returns the query results.
+	 * Executes a GenQuery2 query and returns the query results.
 	 * 
 	 * The query is executed against the zone specified.
 	 * 
@@ -309,26 +309,6 @@ public class IRODSQuery {
 				}
 				throw new IRODSException(ec, "rcGenQuery2 error");
 			}
-
-			// TODO This works.
-//			// Transform the resultset into a multi-dimentional array.
-//			var rows = new String[output.value.rowCnt][output.value.attriCnt];
-//			for (var c = 0; c < output.value.attriCnt; ++c) {
-//				// Get an attribute list.
-//				// Each SqlResult_PI represents a column containing one piece of
-//				// of information for each row.
-//				var sqlResult = output.value.SqlResult_PI.get(c);
-//				for (var r = 0; r < output.value.rowCnt; ++r) {
-//					rows[r][c] = sqlResult.value.get(r);
-//				}
-//			}
-//
-//			// A return value of false instructs the implementation to stop
-//			// iterating over the results. This gives the caller the opportunity
-//			// to exit the loop early.
-//			if (!pageHandler.apply(rows)) {
-//				break;
-//			}
 
 			var row = new ArrayList<String>();
 			for (var r = 0; r < output.value.rowCnt; ++r) {
