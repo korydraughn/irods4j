@@ -34,6 +34,7 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.DelayRuleUnlock
 import org.irods.irods4j.low_level.protocol.packing_instructions.DelayServerMigrationInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ExecMyRuleInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.FileLseekOut_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
@@ -509,6 +510,11 @@ public class IRODSApi {
 	public static int rcObjStat(RcComm comm, DataObjInp_PI input, Reference<RodsObjStat_PI> output) throws IOException {
 		sendApiRequest(comm.socket, 633, input);
 		return receiveServerResponse(comm, RodsObjStat_PI.class, output, null);
+	}
+
+	public static int rcGenQuery(RcComm comm, GenQueryInp_PI input, Reference<GenQueryOut_PI> output) throws IOException {
+		sendApiRequest(comm.socket, 702, input);
+		return receiveServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcGenQuery2(RcComm comm, Genquery2Input_PI input, Reference<String> output) throws IOException {

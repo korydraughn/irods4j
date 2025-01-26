@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.irods.irods4j.api.GenQuery1AggregationFunctions;
+import org.irods.irods4j.api.GenQuery1SortOptions;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSErrorCodes;
@@ -15,8 +17,11 @@ import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.InxIvalPair_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.InxValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
 
@@ -28,6 +33,270 @@ import com.fasterxml.jackson.core.type.TypeReference;
  * @since 0.1.0
  */
 public class IRODSQuery {
+
+	/**
+	 * TODO
+	 * 
+	 * @since 0.1.0
+	 */
+	public static final class GenQuery1QueryArgs {
+
+		private GenQueryInp_PI input = new GenQueryInp_PI();
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public GenQuery1QueryArgs() {
+			init();
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param rows
+		 */
+		public void setMaxRowsPerPage(int rows) {
+			if (rows <= 0) {
+				throw new IllegalArgumentException("Max rows per page is less than or equal to 0");
+			}
+			input.maxRows = rows;
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param offset
+		 */
+		public void setRowOffset(int offset) {
+			if (offset <= 0) {
+				throw new IllegalArgumentException("Row offset is less than or equal to 0");
+			}
+			input.partialStartIndex = offset;
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void enableReturnTotalRowCount() {
+			input.options |= 0x20; // RETURN_TOTAL_ROW_COUNT
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void enableNoDistinct() {
+			input.options |= 0x40; // NO_DISTINCT
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void enableQuotaQuery() {
+			input.options |= 0x80; // QUOTA_QUERY
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void enableAutoClose() {
+			input.options |= 0x100; // AUTO_CLOSE
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void enableUpperCaseWhere() {
+			input.options |= 0x200; // UPPER_CASE_WHERE
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param name
+		 * @param value
+		 * 
+		 * @since 0.1.0
+		 */
+		public void addApiOption(String name, String value) {
+			if (null == name || name.isEmpty()) {
+				throw new IllegalArgumentException("Option name is null or empty");
+			}
+
+			if (null == value || value.isEmpty()) {
+				throw new IllegalArgumentException("Option value is null or empty");
+			}
+
+			++input.KeyValPair_PI.ssLen;
+			input.KeyValPair_PI.keyWord.add(name);
+			input.KeyValPair_PI.svalue.add(value);
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param columnId
+		 * 
+		 * @since 0.1.0
+		 */
+		public void addColumnToSelectClause(int columnId) {
+			if (columnId <= 0) {
+				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			++input.InxIvalPair_PI.iiLen;
+			input.InxIvalPair_PI.inx.add(columnId);
+			input.InxIvalPair_PI.ivalue.add(0);
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param columnId
+		 * @param sortOption
+		 * 
+		 * @since 0.1.0
+		 */
+		public void addColumnToSelectClause(int columnId, GenQuery1SortOptions sortOption) {
+			if (columnId <= 0) {
+				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			if (null == sortOption) {
+				throw new IllegalArgumentException("Sort option is null");
+			}
+
+			++input.InxIvalPair_PI.iiLen;
+			input.InxIvalPair_PI.inx.add(columnId);
+
+			var opt = 0;
+			switch (sortOption) {
+			case NONE:
+				break;
+			case ORDER_BY:
+				opt = 0x400;
+				break;
+			case ORDER_BY_DESC:
+				opt = 0x800;
+				break;
+			}
+
+			input.InxIvalPair_PI.ivalue.add(opt);
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param columnId
+		 * @param aggFn
+		 * 
+		 * @since 0.1.0
+		 */
+		public void addColumnToSelectClause(int columnId, GenQuery1AggregationFunctions aggFn) {
+			if (columnId <= 0) {
+				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			if (null == aggFn) {
+				throw new IllegalArgumentException("Aggregation function is null");
+			}
+
+			++input.InxIvalPair_PI.iiLen;
+			input.InxIvalPair_PI.inx.add(columnId);
+
+			var opt = 0;
+			switch (aggFn) {
+			case NONE:
+				break;
+			case SELECT_MIN:
+				opt = 2;
+				break;
+			case SELECT_MAX:
+				opt = 3;
+				break;
+			case SELECT_SUM:
+				opt = 4;
+				break;
+			case SELECT_AVG:
+				opt = 5;
+				break;
+			case SELECT_COUNT:
+				opt = 6;
+				break;
+			}
+
+			input.InxIvalPair_PI.ivalue.add(opt);
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @param columnId
+		 * @param condition
+		 * 
+		 * @since 0.1.0
+		 */
+		public void addConditionToWhereClause(int columnId, String condition) {
+			if (columnId <= 0) {
+				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			if (null == condition || condition.isEmpty()) {
+				throw new IllegalArgumentException("Condition string is null or empty");
+			}
+
+			++input.InxValPair_PI.isLen;
+			input.InxValPair_PI.inx.add(columnId);
+			input.InxValPair_PI.svalue.add(condition);
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @return
+		 * 
+		 * @since 0.1.0
+		 */
+		public GenQueryInp_PI getGenQueryInp_PI() {
+			return input;
+		}
+
+		/**
+		 * TODO
+		 * 
+		 * @since 0.1.0
+		 */
+		public void init() {
+			input = new GenQueryInp_PI();
+			input.maxRows = 256; // MAX_SQL_ROWS
+
+			input.KeyValPair_PI = new KeyValPair_PI();
+			input.KeyValPair_PI.keyWord = new ArrayList<>();
+			input.KeyValPair_PI.svalue = new ArrayList<>();
+
+			// Projection list
+			input.InxIvalPair_PI = new InxIvalPair_PI();
+			input.InxIvalPair_PI.inx = new ArrayList<>();
+			input.InxIvalPair_PI.ivalue = new ArrayList<>();
+
+			// Condition list
+			input.InxValPair_PI = new InxValPair_PI();
+			input.InxValPair_PI.inx = new ArrayList<>();
+			input.InxValPair_PI.svalue = new ArrayList<>();
+		}
+
+	}
 
 	/**
 	 * Returns the column mappings supported by the GenQuery2 API.
@@ -114,7 +383,7 @@ public class IRODSQuery {
 	 * 
 	 * @since 0.1.0
 	 */
-	public static List<List<String>> executeGenQuery(RcComm comm, String query) throws IOException, IRODSException {
+	public static List<List<String>> executeGenQuery2(RcComm comm, String query) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
 		}
@@ -153,7 +422,7 @@ public class IRODSQuery {
 	 * 
 	 * @since 0.1.0
 	 */
-	public static List<List<String>> executeGenQuery(RcComm comm, String zone, String query)
+	public static List<List<String>> executeGenQuery2(RcComm comm, String zone, String query)
 			throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -183,19 +452,85 @@ public class IRODSQuery {
 	}
 
 	/**
-	 * Executes a SpecificQuery and process pages of rows iteratively.
+	 * Executes a GenQuery1 query.
+	 * 
+	 * This function may result in multiple API calls to the server. To continue
+	 * processing rows, return true from the {@code rowHandler}. To end processing
+	 * of the rows early, return false from the {@code rowHandler}.
+	 * 
+	 * @param comm       A connection to an iRODS server.
+	 * @param query      The query to execute.
+	 * @param rowHandler The callback used to process a single row.
+	 * 
+	 * @throws IOException    If a network error occurs.
+	 * @throws IRODSException If the iRODS API operation fails.
+	 * 
+	 * @since 0.1.0
+	 */
+	public static void executeGenQuery1(RcComm comm, GenQuery1QueryArgs queryArgs,
+			Function<List<String>, Boolean> rowHandler) throws IOException, IRODSException {
+		if (null == comm) {
+			throw new IllegalArgumentException("RcComm is null");
+		}
+
+		if (null == queryArgs) {
+			throw new IllegalArgumentException("Query arguments is null");
+		}
+
+		var input = queryArgs.getGenQueryInp_PI();
+		var output = new Reference<GenQueryOut_PI>();
+
+		while (true) {
+			var ec = IRODSApi.rcGenQuery(comm, input, output);
+			if (ec < 0) {
+				if (IRODSErrorCodes.CAT_NO_ROWS_FOUND == ec) {
+					break;
+				}
+				throw new IRODSException(ec, "rcGenQuery error");
+			}
+
+			var row = new ArrayList<String>();
+			for (var r = 0; r < output.value.rowCnt; ++r) {
+				for (var c = 0; c < output.value.attriCnt; ++c) {
+					// Get an attribute list. Each SqlResult_PI represents a column containing one
+					// piece of of information for each row.
+					var sqlResult = output.value.SqlResult_PI.get(c);
+					row.add(sqlResult.value.get(r));
+				}
+
+				// A return value of false instructs the implementation to stop iterating over
+				// the results. This gives the caller the opportunity to exit the loop early.
+				if (!rowHandler.apply(Collections.unmodifiableList(row))) {
+					return;
+				}
+
+				row.clear();
+			}
+
+			// There's no more data, exit the loop.
+			if (output.value.continueInx <= 0) {
+				break;
+			}
+
+			// Move to the next page.
+			input.continueInx = output.value.continueInx;
+		}
+	}
+
+	/**
+	 * Executes a SpecificQuery.
 	 * 
 	 * The query is executed against the zone specified.
 	 * 
 	 * This function may result in multiple API calls to the server. To continue
-	 * processing rows, return true from the {@code pageHandler}. To end processing
-	 * of the rows early, return false from the {@code pageHandler}.
+	 * processing rows, return true from the {@code rowHandler}. To end processing
+	 * of the rows early, return false from the {@code rowHandler}.
 	 * 
 	 * @param comm              A connection to an iRODS server.
 	 * @param zone              The zone to execute the query against.
 	 * @param specificQueryName The name of the SpecificQuery to execute.
 	 * @param bindArgs          The list of bind arguments.
-	 * @param pageHandler       The callback used to process a list of rows.
+	 * @param rowHandler        The callback used to process a single row.
 	 * 
 	 * @throws IOException    If a network error occurs.
 	 * @throws IRODSException If the iRODS API operation fails.
@@ -203,21 +538,21 @@ public class IRODSQuery {
 	 * @since 0.1.0
 	 */
 	public static void executeSpecificQuery(RcComm comm, String zone, String specificQueryName, List<String> bindArgs,
-			Function<List<String>, Boolean> pageHandler) throws IOException, IRODSException {
-		executeSpecificQueryImpl(comm, Optional.of(zone), specificQueryName, bindArgs, pageHandler);
+			Function<List<String>, Boolean> rowHandler) throws IOException, IRODSException {
+		executeSpecificQueryImpl(comm, Optional.of(zone), specificQueryName, bindArgs, rowHandler);
 	}
 
 	/**
-	 * Executes a SpecificQuery and process pages of rows iteratively.
+	 * Executes a SpecificQuery.
 	 * 
 	 * This function may result in multiple API calls to the server. To continue
-	 * processing rows, return true from the {@code pageHandler}. To end processing
-	 * of the rows early, return false from the {@code pageHandler}.
+	 * processing rows, return true from the {@code rowHandler}. To end processing
+	 * of the rows early, return false from the {@code rowHandler}.
 	 * 
 	 * @param comm              A connection to an iRODS server.
 	 * @param specificQueryName The name of the SpecificQuery to execute.
 	 * @param bindArgs          The list of bind arguments.
-	 * @param pageHandler       The callback used to process a list of rows.
+	 * @param rowHandler        The callback used to process a single row.
 	 * 
 	 * @throws IOException    If a network error occurs.
 	 * @throws IRODSException If the iRODS API operation fails.
@@ -225,8 +560,8 @@ public class IRODSQuery {
 	 * @since 0.1.0
 	 */
 	public static void executeSpecificQuery(RcComm comm, String specificQueryName, List<String> bindArgs,
-			Function<List<String>, Boolean> pageHandler) throws IOException, IRODSException {
-		executeSpecificQueryImpl(comm, Optional.empty(), specificQueryName, bindArgs, pageHandler);
+			Function<List<String>, Boolean> rowHandler) throws IOException, IRODSException {
+		executeSpecificQueryImpl(comm, Optional.empty(), specificQueryName, bindArgs, rowHandler);
 	}
 
 	private static void executeSpecificQueryImpl(RcComm comm, Optional<String> zone, String specificQueryName,

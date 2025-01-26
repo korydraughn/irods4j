@@ -436,7 +436,7 @@ public class IRODSFilesystem {
 		var query = String.format("select COLL_ID where COLL_NAME = '%s'", p.getParent().toString());
 		var zone = extractZoneFromPath(path);
 
-		return !IRODSQuery.executeGenQuery(comm, zone, query).isEmpty();
+		return !IRODSQuery.executeGenQuery2(comm, zone, query).isEmpty();
 	}
 
 	/**
@@ -461,7 +461,7 @@ public class IRODSFilesystem {
 				p.getParent().toString(), p.getFileName().toString());
 		var zone = extractZoneFromPath(path);
 
-		return !IRODSQuery.executeGenQuery(comm, zone, query).isEmpty();
+		return !IRODSQuery.executeGenQuery2(comm, zone, query).isEmpty();
 	}
 
 	/**
@@ -532,7 +532,7 @@ public class IRODSFilesystem {
 		var query = String.format(
 				"select DATA_SIZE, DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_STATUS = '1'",
 				p.getParent().toString(), p.getFileName().toString());
-		var rows = IRODSQuery.executeGenQuery(comm, zone, query);
+		var rows = IRODSQuery.executeGenQuery2(comm, zone, query);
 
 		if (rows.isEmpty()) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.SYS_NO_GOOD_REPLICA, "No good replica available", path);
@@ -666,7 +666,7 @@ public class IRODSFilesystem {
 		var query = String.format("select COLL_TYPE, COLL_INFO1, COLL_INFO2 where COLL_NAME = '%s'", path);
 		var zone = extractZoneFromPath(path);
 
-		for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return !row.get(0).isEmpty() && (!row.get(1).isEmpty() || !row.get(2).isEmpty());
 		}
 
@@ -742,7 +742,7 @@ public class IRODSFilesystem {
 
 		var zone = extractZoneFromPath(path);
 
-		for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return Long.parseLong(row.get(0));
 		}
 
@@ -1039,7 +1039,7 @@ public class IRODSFilesystem {
 		// requirement within the loop, therefore the first iteration always causes the
 		// checksum to be captured. The checksum object should be empty if and only if
 		// there are no good replicas.
-		for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			var curMtime = Long.parseLong(row.get(1));
 			if (curMtime > latestMtime) {
 				latestMtime = curMtime;
@@ -1163,7 +1163,7 @@ public class IRODSFilesystem {
 			var query = String.format(
 					"select DATA_ACCESS_USER_ID, DATA_ACCESS_PERM_NAME where COLL_NAME = '%s' and DATA_NAME = '%s'",
 					fspath.getParent().toString(), fspath.getFileName().toString());
-			for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+			for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 				map.put(row.get(0), row.get(1));
 			}
 
@@ -1171,7 +1171,7 @@ public class IRODSFilesystem {
 			query = String.format("select USER_ID, USER_NAME, USER_ZONE, USER_TYPE where USER_ID in ('%s')",
 					String.join("', '", map.keySet()));
 			log.debug("Query for data object permissions = [{}]", query);
-			for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+			for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 				var ep = new EntityPermission();
 				ep.name = row.get(1);
 				ep.zone = row.get(2);
@@ -1205,7 +1205,7 @@ public class IRODSFilesystem {
 
 		var zone = extractZoneFromPath(path);
 		var query = String.format("select COLL_INHERITANCE where COLL_NAME = '%s'", path);
-		for (var row : IRODSQuery.executeGenQuery(comm, zone, query)) {
+		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return "1".equals(row.get(0));
 		}
 
