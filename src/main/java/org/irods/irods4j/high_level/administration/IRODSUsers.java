@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,17 +13,13 @@ import org.irods.irods4j.api.GenQuery1Columns;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.api.IRODSException;
-import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.high_level.administration.IRODSZones.ZoneType;
 import org.irods.irods4j.high_level.catalog.IRODSQuery;
 import org.irods.irods4j.high_level.catalog.IRODSQuery.GenQuery1QueryArgs;
-import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.GeneralAdminInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.UserAdminInp_PI;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -49,7 +46,8 @@ public class IRODSUsers {
 	 * 
 	 * @since 0.1.0
 	 */
-	public static final class User {
+	public static final class User implements Comparable<User> {
+
 		public String name;
 		public String zone;
 
@@ -60,6 +58,30 @@ public class IRODSUsers {
 			this.name = name;
 			this.zone = zone.orElse("");
 		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) {
+				return true;
+			}
+
+			if (null == o || getClass() != o.getClass()) {
+				return false;
+			}
+
+			var other = (User) o;
+			return name.equals(other.name) && zone.equals(other.zone);
+		}
+
+		@Override
+		public int compareTo(User o) {
+			var result = name.compareTo(o.name);
+			if (0 == result) {
+				return zone.compareTo(o.zone);
+			}
+			return result;
+		}
+
 	}
 
 	/**
@@ -67,7 +89,8 @@ public class IRODSUsers {
 	 * 
 	 * @since 0.1.0
 	 */
-	public static final class Group {
+	public static final class Group implements Comparable<Group> {
+
 		public String name;
 
 		public Group() {
@@ -76,6 +99,25 @@ public class IRODSUsers {
 		public Group(String name) {
 			this.name = name;
 		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) {
+				return true;
+			}
+
+			if (null == o || getClass() != o.getClass()) {
+				return false;
+			}
+
+			return name.equals(((Group) o).name);
+		}
+
+		@Override
+		public int compareTo(Group o) {
+			return name.compareTo(o.name);
+		}
+
 	}
 
 	/**
@@ -397,7 +439,7 @@ public class IRODSUsers {
 
 		var input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
-		input.arg1 = "group";
+		input.arg1 = "user";
 		input.arg2 = group.name;
 		input.arg3 = "rodsgroup";
 		input.arg4 = zone;
@@ -697,30 +739,11 @@ public class IRODSUsers {
 
 		var groups = new ArrayList<Group>();
 
-		var input = new SpecificQueryInp_PI();
-		input.sql = "listGroupsForUser";
-		input.arg1 = localUniqueName(comm, user);
-		input.maxRows = 256; // TODO Need to think about this and pagination.
-		input.KeyValPair_PI = new KeyValPair_PI();
-		input.KeyValPair_PI.ssLen = 1;
-		input.KeyValPair_PI.keyWord = new ArrayList<>();
-		input.KeyValPair_PI.svalue = new ArrayList<>();
-		input.KeyValPair_PI.keyWord.add(IRODSKeywords.ZONE);
-		input.KeyValPair_PI.svalue.add(user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone);
-
-		var output = new Reference<GenQueryOut_PI>();
-
-		var ec = IRODSApi.rcSpecificQuery(comm, input, output);
-		if (ec < 0) {
-			throw new IRODSException(ec, "rcSpecificQuery error");
-		}
-
-		if (0 == output.value.rowCnt) {
-			return groups;
-		}
-
-		var sqlResult = output.value.SqlResult_PI.get(1);
-		sqlResult.value.forEach(group -> groups.add(new Group(group)));
+		var bindArgs = Arrays.asList(localUniqueName(comm, user));
+		IRODSQuery.executeSpecificQuery(comm, "listGroupsForUser", bindArgs, row -> {
+			groups.add(new Group(row.get(1)));
+			return true;
+		});
 
 		return groups;
 	}

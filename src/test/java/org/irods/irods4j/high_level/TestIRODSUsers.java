@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
 
@@ -91,6 +92,35 @@ class TestIRODSUsers {
 		assertNotNull(users);
 		assertFalse(users.isEmpty());
 		assertTrue(users.stream().anyMatch(u -> username.equals(u.name) && zone.equals(u.zone)));
+	}
+
+	@Test
+	void testRetrieveAllGroupsContainingASpecificUser() throws IOException, IRODSException {
+		var groups = Arrays.asList(new Group("irods4j_testgroup0"), new Group("irods4j_testgroup1"),
+				new Group("irods4j_testgroup2"));
+
+		try {
+			assertDoesNotThrow(() -> {
+				for (var g : groups) {
+					IRODSUsers.addGroup(comm, g);
+					IRODSUsers.addUserToGroup(comm, g, rodsuser);
+				}
+			});
+
+			var groupsContainingMember = IRODSUsers.groups(comm, rodsuser);
+			groupsContainingMember.forEach(g -> log.debug("group = {}", g.name));
+
+			assertNotNull(groupsContainingMember);
+			assertFalse(groupsContainingMember.isEmpty());
+			assertTrue(groupsContainingMember.size() > 1);
+			assertTrue(groupsContainingMember.stream().allMatch(g -> "public".equals(g.name) || groups.contains(g)));
+		} finally {
+			assertDoesNotThrow(() -> {
+				for (var g : groups) {
+					IRODSUsers.removeGroup(comm, g);
+				}
+			});
+		}
 	}
 
 }
