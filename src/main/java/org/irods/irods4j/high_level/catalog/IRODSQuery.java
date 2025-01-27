@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.irods.irods4j.api.GenQuery1AggregationFunctions;
+import org.irods.irods4j.api.GenQuery1Limits;
 import org.irods.irods4j.api.GenQuery1SortOptions;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -155,6 +156,10 @@ public class IRODSQuery {
 				throw new IllegalArgumentException("Column Id is less than or equal to 0");
 			}
 
+			if (input.InxIvalPair_PI.iiLen == GenQuery1Limits.MAX_SQL_ATTR) {
+				throw new IllegalStateException("Max number of columns in SELECT clause has been reached");
+			}
+
 			++input.InxIvalPair_PI.iiLen;
 			input.InxIvalPair_PI.inx.add(columnId);
 			input.InxIvalPair_PI.ivalue.add(0);
@@ -171,6 +176,10 @@ public class IRODSQuery {
 		public void addColumnToSelectClause(int columnId, GenQuery1SortOptions sortOption) {
 			if (columnId <= 0) {
 				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			if (input.InxIvalPair_PI.iiLen == GenQuery1Limits.MAX_SQL_ATTR) {
+				throw new IllegalStateException("Max number of columns in SELECT clause has been reached");
 			}
 
 			if (null == sortOption) {
@@ -206,6 +215,10 @@ public class IRODSQuery {
 		public void addColumnToSelectClause(int columnId, GenQuery1AggregationFunctions aggFn) {
 			if (columnId <= 0) {
 				throw new IllegalArgumentException("Column Id is less than or equal to 0");
+			}
+
+			if (input.InxIvalPair_PI.iiLen == GenQuery1Limits.MAX_SQL_ATTR) {
+				throw new IllegalStateException("Max number of columns in SELECT clause has been reached");
 			}
 
 			if (null == aggFn) {
@@ -279,7 +292,7 @@ public class IRODSQuery {
 		 */
 		public void init() {
 			input = new GenQueryInp_PI();
-			input.maxRows = 256; // MAX_SQL_ROWS
+			input.maxRows = GenQuery1Limits.MAX_SQL_ROWS;
 
 			input.KeyValPair_PI = new KeyValPair_PI();
 			input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -584,7 +597,7 @@ public class IRODSQuery {
 
 		var input = new SpecificQueryInp_PI();
 		input.sql = specificQueryName;
-		input.maxRows = 256;
+		input.maxRows = GenQuery1Limits.MAX_SQL_ROWS;
 
 		zone.ifPresent(value -> {
 			if (null == value || value.isEmpty()) {
