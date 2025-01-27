@@ -86,8 +86,8 @@ class TestIRODSRecursiveCollectionIterator {
 
 		try {
 			// Create the data object.
-			try (var dataObject = new IRODSDataObjectStream(conn.getRcComm())) {
-				dataObject.open(path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
+			try (var dataObject = new IRODSDataObjectStream()) {
+				dataObject.open(conn.getRcComm(), path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 			}
 
 			var collIterator = new IRODSRecursiveCollectionIterator(conn.getRcComm(), path);

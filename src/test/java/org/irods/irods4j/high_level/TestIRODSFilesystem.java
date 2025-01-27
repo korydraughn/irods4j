@@ -124,8 +124,8 @@ class TestIRODSFilesystem {
 
 			// Create a data object.
 			var from = sandbox.resolve("data_object1");
-			try (var stream = new IRODSDataObjectStream(conn.getRcComm())) {
-				stream.open(from.toString(), OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
+			try (var stream = new IRODSDataObjectStream()) {
+				stream.open(conn.getRcComm(), from.toString(), OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 			}
 			var fromStatus = IRODSFilesystem.status(conn.getRcComm(), from.toString());
 			assertTrue(IRODSFilesystem.exists(fromStatus));
@@ -148,8 +148,8 @@ class TestIRODSFilesystem {
 		var path = Paths.get("/", zone, "home", username, "testListPermissionsOnDataObject").toString();
 
 		// Create a new data object.
-		try (var out = new IRODSDataObjectStream(conn.getRcComm())) {
-			out.open(path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
+		try (var out = new IRODSDataObjectStream()) {
+			out.open(conn.getRcComm(), path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 		}
 
 		// Get the permissions on the data object.

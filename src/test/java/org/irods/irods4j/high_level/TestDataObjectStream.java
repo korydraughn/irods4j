@@ -54,8 +54,8 @@ class TestDataObjectStream {
 				.get("/", zone, "home", username, "testDataObjectStreamCapturesReplicaNumberAndReplicaToken.txt")
 				.toString();
 
-		var in = new IRODSDataObjectStream(comm);
-		in.open(logicalPath, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
+		var in = new IRODSDataObjectStream();
+		in.open(comm, logicalPath, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 		assertTrue(in.isOpen());
 
 		assertTrue(in.getNativeHandle() >= 3);

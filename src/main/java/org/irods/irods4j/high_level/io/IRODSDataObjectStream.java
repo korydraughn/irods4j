@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.api.IRODSApi.ByteArrayReference;
 import org.irods.irods4j.api.IRODSApi.RcComm;
@@ -21,6 +23,8 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.OpenedDataObjIn
  * 
  */
 public class IRODSDataObjectStream implements AutoCloseable {
+
+	private static final Logger log = LogManager.getLogger();
 
 	private RcComm comm;
 	private int fd = -1;
@@ -49,8 +53,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * 
 	 * @param comm
 	 */
-	public IRODSDataObjectStream(RcComm comm) {
-		this.comm = comm;
+	public IRODSDataObjectStream() {
 	}
 
 	/**
@@ -60,11 +63,11 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IOException
 	 * @throws IRODSException
 	 */
-	public void open(String logicalPath, int openMode) throws IOException, IRODSException {
+	public void open(RcComm comm, String logicalPath, int openMode) throws IOException, IRODSException {
 		Optional<Integer> replicaNumber = Optional.empty();
 		Optional<String> rootResource = Optional.empty();
 		Optional<String> replicaToken = Optional.empty();
-		openImpl(logicalPath, openMode, replicaNumber, rootResource, replicaToken);
+		openImpl(comm, logicalPath, openMode, replicaNumber, rootResource, replicaToken);
 	}
 
 	/**
@@ -75,10 +78,11 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IRODSException
 	 * @throws IOException
 	 */
-	public void open(String logicalPath, int replicaNumber, int openMode) throws IOException, IRODSException {
+	public void open(RcComm comm, String logicalPath, int replicaNumber, int openMode)
+			throws IOException, IRODSException {
 		Optional<String> rootResource = Optional.empty();
 		Optional<String> replicaToken = Optional.empty();
-		openImpl(logicalPath, openMode, Optional.of(replicaNumber), rootResource, replicaToken);
+		openImpl(comm, logicalPath, openMode, Optional.of(replicaNumber), rootResource, replicaToken);
 	}
 
 	/**
@@ -89,10 +93,11 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IRODSException
 	 * @throws IOException
 	 */
-	public void open(String logicalPath, String rootResource, int openMode) throws IOException, IRODSException {
+	public void open(RcComm comm, String logicalPath, String rootResource, int openMode)
+			throws IOException, IRODSException {
 		Optional<Integer> replicaNumber = Optional.empty();
 		Optional<String> replicaToken = Optional.empty();
-		openImpl(logicalPath, openMode, replicaNumber, Optional.of(rootResource), replicaToken);
+		openImpl(comm, logicalPath, openMode, replicaNumber, Optional.of(rootResource), replicaToken);
 	}
 
 	/**
@@ -104,10 +109,10 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IRODSException
 	 * @throws IOException
 	 */
-	public void open(String replicaToken, String logicalPath, int replicaNumber, int openMode)
+	public void open(RcComm comm, String replicaToken, String logicalPath, int replicaNumber, int openMode)
 			throws IOException, IRODSException {
 		Optional<String> rootResource = Optional.empty();
-		openImpl(logicalPath, openMode, Optional.of(replicaNumber), rootResource, Optional.of(replicaToken));
+		openImpl(comm, logicalPath, openMode, Optional.of(replicaNumber), rootResource, Optional.of(replicaToken));
 	}
 
 	/**
@@ -119,10 +124,10 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	 * @throws IRODSException
 	 * @throws IOException
 	 */
-	public void open(String replicaToken, String logicalPath, String rootResource, int openMode)
+	public void open(RcComm comm, String replicaToken, String logicalPath, String rootResource, int openMode)
 			throws IOException, IRODSException {
 		Optional<Integer> replicaNumber = Optional.empty();
-		openImpl(logicalPath, openMode, replicaNumber, Optional.of(rootResource), Optional.of(replicaToken));
+		openImpl(comm, logicalPath, openMode, replicaNumber, Optional.of(rootResource), Optional.of(replicaToken));
 	}
 
 	/**
@@ -156,7 +161,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 
 		var ec = IRODSApi.rcReplicaClose(comm, JsonUtil.toJsonString(input));
 		if (ec < 0) {
-			// TODO Log error and keep going?
+			log.error("rcReplicaClose error");
 		}
 
 		fd = -1;
@@ -197,7 +202,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 
 		var ec = IRODSApi.rcDataObjLseek(comm, input, output);
 		if (ec < 0) {
-			throw new IRODSException(ec, "Seek error");
+			throw new IRODSException(ec, "rcDataObjLseek error");
 		}
 
 		return output.value.offset;
@@ -221,7 +226,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 
 		var bytesRead = IRODSApi.rcDataObjRead(comm, input, buffer);
 		if (bytesRead < 0) {
-			throw new IRODSException(bytesRead, "Read error");
+			throw new IRODSException(bytesRead, "rcDataObjRead error");
 		}
 
 		return bytesRead;
@@ -247,7 +252,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 
 		var bytesWritten = IRODSApi.rcDataObjWrite(comm, input, buffer);
 		if (bytesWritten < 0) {
-			throw new IRODSException(bytesWritten, "Write error");
+			throw new IRODSException(bytesWritten, "rcDataObjWrite error");
 		}
 
 		return bytesWritten;
@@ -288,7 +293,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 		return replicaToken;
 	}
 
-	private void openImpl(String logicalPath, int openMode, Optional<Integer> replicaNumber,
+	private void openImpl(RcComm comm, String logicalPath, int openMode, Optional<Integer> replicaNumber,
 			Optional<String> rootResource, Optional<String> replicaToken) throws IOException, IRODSException {
 		if (null == logicalPath || logicalPath.isEmpty()) {
 			throw new IllegalArgumentException("Logical path is null or empty");
@@ -331,10 +336,14 @@ public class IRODSDataObjectStream implements AutoCloseable {
 
 		var ec = IRODSApi.rcReplicaOpen(comm, input, output);
 		if (ec < 0) {
-			throw new IRODSException(ec, "Open error: " + logicalPath);
+			throw new IRODSException(ec, "rcReplicaOpen error");
 		}
 
-		fd = ec;
+		fd = ec; // Remember the L1 descriptor.
+
+		// We only maintain a reference to the RcComm if the call to rcReplicaOpen
+		// succeeded. It serves no purpose if the open() operation failed.
+		this.comm = comm;
 
 		// Capture information from the L1 descriptor JSON payload.
 		// This information eases parallel transfer initialization.
