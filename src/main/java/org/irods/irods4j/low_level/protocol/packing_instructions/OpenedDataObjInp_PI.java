@@ -6,10 +6,8 @@ public class OpenedDataObjInp_PI {
 	public int len;
 	public int whence;
 	public int oprType;
-//	public double offset;
-//	public double bytesWritten;
-	public int offset; // TODO This is a double in the iRODS C API, which is crap.
-	public int bytesWritten; // TODO This is a double in the iRODS C API, which is crap.
+	public long offset; // This is a double in the C impl.
+	public long bytesWritten; // This is a double in the C impl.
 	public KeyValPair_PI KeyValPair_PI;
 
 }

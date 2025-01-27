@@ -15,6 +15,7 @@ import org.irods.irods4j.api.IRODSErrorCodes;
 import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.high_level.administration.IRODSUsers;
 import org.irods.irods4j.high_level.catalog.IRODSQuery;
 import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollInpNew_PI;
@@ -1176,7 +1177,7 @@ public class IRODSFilesystem {
 				ep.name = row.get(1);
 				ep.zone = row.get(2);
 				ep.prms = toPermissionEnum(map.get(row.get(0)));
-				ep.type = row.get(3);
+				ep.type = IRODSUsers.toUserType(row.get(3));
 				perms.add(ep);
 			}
 		}
@@ -1189,7 +1190,7 @@ public class IRODSFilesystem {
 				ep.name = row.get(0);
 				ep.zone = row.get(1);
 				ep.prms = toPermissionEnum(row.get(2));
-				ep.type = row.get(3);
+				ep.type = IRODSUsers.toUserType(row.get(3));
 				perms.add(ep);
 				return true;
 			});

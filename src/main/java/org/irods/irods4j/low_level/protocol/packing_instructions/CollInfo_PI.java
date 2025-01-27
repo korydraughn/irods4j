@@ -2,7 +2,7 @@ package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 public class CollInfo_PI {
 
-	public double collId;
+	public long collId; // This is a double in the C impl.
 	public String collName;
 	public String collParentName;
 	public String collOwnerName;

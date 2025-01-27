@@ -1,5 +1,8 @@
 package org.irods.irods4j.low_level.protocol.packing_instructions;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 public class DataObjInp_PI {
 
 	public static class OpenFlags {
@@ -16,16 +19,14 @@ public class DataObjInp_PI {
 	public String objPath;
 	public int createMode;
 	public int openFlags;
-//	public double offset;
-//	public double dataSize;
-	public int offset; // TODO This is a double in the iRODS C API, which is crap.
-	public int dataSize; // TODO This is a double in the iRODS C API, which is crap.
+	public long offset; // This is a double in the C impl.
+	public long dataSize; // This is a double in the C impl.
 	public int numThreads;
 	public int oprType;
-	// TODO Causes operations to fail unless handled using a custom serialization
-	// method. Will deal with this later. Maybe I'll just not provide support for
-	// special collections in this library. We want to get rid of them anyway.
-//	public SpecColl_PI SpecColl_PI;
+
+	@JsonInclude(Include.NON_NULL)
+	public SpecColl_PI SpecColl_PI;
+
 	public KeyValPair_PI KeyValPair_PI;
 
 }

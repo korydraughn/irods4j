@@ -4,7 +4,7 @@ public class CollOprStat_PI {
 	
 	public int filesCnt;
 	public int totalFileCnt;
-	public double bytesWritten;
+	public long bytesWritten; // This is a double in the C impl.
 	public String lastObjPath;
 
 }

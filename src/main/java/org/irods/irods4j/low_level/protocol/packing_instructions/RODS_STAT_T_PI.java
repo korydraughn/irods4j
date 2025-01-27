@@ -2,7 +2,7 @@ package org.irods.irods4j.low_level.protocol.packing_instructions;
 
 public class RODS_STAT_T_PI {
 	
-	public double st_size;
+	public long st_size; // This is a double in the C impl.
 	public int st_dev;
 	public int st_ino;
 	public int st_mode;

@@ -6,7 +6,7 @@ public class DataObjInfo_PI {
 	public String rescName;
 	public String rescHier;
 	public String dataType;
-	public int dataSize; // PI defines it as double, but should be an int.
+	public long dataSize; // This is a double in the C impl.
 	public String chksum;
 	public String version;
 	public String filePath;
@@ -15,8 +15,8 @@ public class DataObjInfo_PI {
 	public int replNum;
 	public int replStatus;
 	public String statusString;
-	public int dataId; // PI defines it as double, but should be an int.
-	public int collId; // PI defines it as double, but should be an int.
+	public long dataId; // This is a double in the C impl.
+	public long collId; // This is a double in the C impl.
 	public int dataMapId;
 	public int flags;
 	public String dataComments;
@@ -36,6 +36,6 @@ public class DataObjInfo_PI {
 	public KeyValPair_PI KeyValPair_PI;
 	public String in_pdmo;
 	public int next;
-	public int rescId; // PI defines it as double, but should be an int.
+	public long rescId; // This is a double in the C impl.
 
 }

@@ -6,7 +6,7 @@ public class CollEnt_PI {
 	public int replNum;
 	public int replStatus;
 	public int dataMode;
-	public long dataSize; // Data type is double in C.
+	public long dataSize; // This is a double in the C impl.
 	public String collName;
 	public String dataName;
 	public String dataId;

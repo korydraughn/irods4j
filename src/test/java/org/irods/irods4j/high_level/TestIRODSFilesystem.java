@@ -11,12 +11,13 @@ import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.XmlUtil;
+import org.irods.irods4j.high_level.administration.IRODSUsers.UserType;
 import org.irods.irods4j.high_level.connection.IRODSConnection;
 import org.irods.irods4j.high_level.connection.QualifiedUsername;
 import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
 import org.irods.irods4j.high_level.vfs.IRODSFilesystem;
 import org.irods.irods4j.high_level.vfs.IRODSFilesystem.RemoveOptions;
-import org.irods.irods4j.high_level.vfs.IRODSFilesystemException;
+import org.irods.irods4j.high_level.vfs.Permission;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -113,7 +114,7 @@ class TestIRODSFilesystem {
 			assertTrue(IRODSFilesystem.remove(conn.getRcComm(), collToRemove, RemoveOptions.NO_TRASH));
 		}
 	}
-	
+
 	@Test
 	void testCopyADataObjectUsingCopyDataObjectFunction() throws Exception {
 		var sandbox = Paths.get("/", zone, "home", username, "testCopyADataObjectUsingCopyDataObjectFunction");
@@ -141,13 +142,27 @@ class TestIRODSFilesystem {
 			IRODSFilesystem.removeAll(conn.getRcComm(), sandbox.toString(), RemoveOptions.NO_TRASH);
 		}
 	}
-	
+
 	@Test
-	void testListPermissionsOnDataObject() throws IRODSFilesystemException, IOException, IRODSException {
-		var status = IRODSFilesystem.status(conn.getRcComm(), "/tempZone/home/rods/foo");
+	void testListPermissionsOnDataObject() throws Exception {
+		var path = Paths.get("/", zone, "home", username, "testListPermissionsOnDataObject").toString();
+
+		// Create a new data object.
+		try (var out = new IRODSDataObjectStream(conn.getRcComm())) {
+			out.open(path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
+		}
+
+		// Get the permissions on the data object.
+		var status = IRODSFilesystem.status(conn.getRcComm(), path);
 		status.getPermissions().forEach(p -> {
-			log.debug("[name={}, zone={}, permission={}, type={}]", p.name, p.zone, p.prms, p.type);
+			log.debug("[name={}, zone={}, permission={}, type={}]", p.getName(), p.getZone(), p.getPermission(),
+					p.getUserType());
 		});
+		assertFalse(status.getPermissions().isEmpty());
+		assertTrue(status.getPermissions().stream().anyMatch(ep -> {
+			return username.equals(ep.getName()) && zone.equals(ep.getZone()) && Permission.OWN == ep.getPermission()
+					&& UserType.RODSADMIN == ep.getUserType();
+		}));
 	}
 
 }
