@@ -27,12 +27,28 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.UserAdminInp_PI
 
 import com.fasterxml.jackson.core.type.TypeReference;
 
+/**
+ * A class providing high-level data types and functions for managing users and
+ * groups.
+ * 
+ * @since 0.1.0
+ */
 public class IRODSUsers {
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static enum UserType {
 		RODSUSER, GROUPADMIN, RODSADMIN
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class User {
 		public String name;
 		public String zone;
@@ -46,6 +62,11 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class Group {
 		public String name;
 
@@ -57,27 +78,60 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static enum UserAuthenticationOperation {
 		ADD, REMOVE
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static class UserProperty {
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class UserPasswordProperty extends UserProperty {
 		public String value;
 		public String requesterPassword;
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class UserTypeProperty extends UserProperty {
 		public UserType value;
 	}
 
+	/**
+	 * 
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class UserAuthenticationProperty extends UserProperty {
 		public UserAuthenticationOperation op;
 		public String value;
 	}
 
+	/**
+	 * 
+	 * @param v
+	 * 
+	 * @return
+	 * 
+	 * @since 0.1.0
+	 */
 	public static UserType toUserType(String v) {
 		if ("rodsuser".equals(v)) {
 			return UserType.RODSUSER;
@@ -94,6 +148,14 @@ public class IRODSUsers {
 		throw new IllegalArgumentException("User type not supported");
 	}
 
+	/**
+	 * 
+	 * @param v
+	 * 
+	 * @return
+	 * 
+	 * @since 0.1.0
+	 */
 	public static String toString(UserType v) {
 		switch (v) {
 		case RODSUSER:
@@ -107,6 +169,18 @@ public class IRODSUsers {
 		throw new IllegalArgumentException("User type not supported");
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static String localUniqueName(RcComm comm, User user) throws IOException, IRODSException {
 		if (user.zone.isEmpty()) {
 			return user.name;
@@ -122,6 +196,18 @@ public class IRODSUsers {
 		return qualifiedName.toString();
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * @param userType
+	 * @param zoneType
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void addUser(RcComm comm, User user, UserType userType, ZoneType zoneType)
 			throws IOException, IRODSException {
 		if (null == comm) {
@@ -180,6 +266,16 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void removeUser(RcComm comm, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -201,6 +297,18 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * @param property
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * @throws NoSuchAlgorithmException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void modifyUser(RcComm comm, User user, UserProperty property)
 			throws IOException, IRODSException, NoSuchAlgorithmException {
 		if (null == comm) {
@@ -247,6 +355,16 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void addGroup(RcComm comm, Group group) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -290,6 +408,16 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void removeGroup(RcComm comm, Group group) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -311,6 +439,17 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * @param user
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void addUserToGroup(RcComm comm, Group group, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -361,6 +500,17 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * @param user
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void removeUserFromGroup(RcComm comm, Group group, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -411,6 +561,17 @@ public class IRODSUsers {
 		}
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static List<User> users(RcComm comm) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -437,6 +598,18 @@ public class IRODSUsers {
 		return users;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static List<User> users(RcComm comm, Group group) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -464,6 +637,17 @@ public class IRODSUsers {
 		return users;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static List<Group> groups(RcComm comm) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -490,6 +674,18 @@ public class IRODSUsers {
 		return groups;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static List<Group> groups(RcComm comm, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -529,6 +725,18 @@ public class IRODSUsers {
 		return groups;
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean exists(RcComm comm, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -556,6 +764,18 @@ public class IRODSUsers {
 		return !rows.isEmpty();
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean exists(RcComm comm, Group group) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -582,6 +802,18 @@ public class IRODSUsers {
 		return !rows.isEmpty();
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static Optional<String> id(RcComm comm, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -613,6 +845,18 @@ public class IRODSUsers {
 		return Optional.of(rows.get(0).get(0));
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param group
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static Optional<String> id(RcComm comm, Group group) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -643,6 +887,18 @@ public class IRODSUsers {
 		return Optional.of(rows.get(0).get(0));
 	}
 
+	/**
+	 * 
+	 * @param comm
+	 * @param user
+	 * 
+	 * @return
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
+	 * 
+	 * @since 0.1.0
+	 */
 	public static Optional<UserType> type(RcComm comm, User user) throws IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
@@ -674,6 +930,11 @@ public class IRODSUsers {
 		return Optional.of(toUserType(rows.get(0).get(0)));
 	}
 
+	/**
+	 * TODO
+	 * 
+	 * @since 0.1.0
+	 */
 	public static boolean userIsMemberOfGroup(RcComm comm, Group group, User user) {
 		// TODO Disabled until GenQuery2 provides better support for groups.
 		throw new UnsupportedOperationException("Not implemented yet");
