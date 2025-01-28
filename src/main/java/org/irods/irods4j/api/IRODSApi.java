@@ -3,6 +3,7 @@ package org.irods.irods4j.api;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.Optional;
@@ -68,12 +69,30 @@ import org.irods.irods4j.low_level.protocol.packing_instructions.UnregDataObj_PI
 import org.irods.irods4j.low_level.protocol.packing_instructions.UserAdminInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Version_PI;
 
+/**
+ * A low-level class providing functions mirroring the iRODS C API.
+ * 
+ * All public API functions share identical names with the C API. Users should
+ * prefer the abstractions provided by the high_level package in production
+ * code. Use of the functions provided by this class should be a last resort.
+ * 
+ * @since 0.1.0
+ */
 public class IRODSApi {
 
 	public static final Logger log = LogManager.getLogger();
 
 	private static String appName = "irods4j";
 
+	/**
+	 * The iRODS connection object which enables communication with an iRODS server.
+	 * 
+	 * Users of the library are allowed to read the contents of this class. While
+	 * the properties of this structure can be modified, doing so is highly
+	 * discouraged.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static class RcComm {
 		public Socket socket;
 		public Socket plainSocket;
@@ -101,10 +120,32 @@ public class IRODSApi {
 		public RError_PI rError;
 	}
 
+	/**
+	 * A class acting as a reference to a byte array.
+	 * 
+	 * The byte array holds byte[] instead of Byte[].
+	 * 
+	 * @since 0.1.0
+	 */
 	public static class ByteArrayReference {
 		public byte[] data;
 	}
 
+	/**
+	 * Sets the global application name identifying the client to the iRODS server.
+	 * 
+	 * This function is designed to be called only once. Attempting to call it more
+	 * than one time will result in an exception. All connections made to the iRODS
+	 * server will share the name set by this function.
+	 * 
+	 * Users of this library should call this function before establishing any
+	 * connections to an iRODS server.
+	 * 
+	 * @param name The name used by the iRODS server to identify the client
+	 *             application.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static void setApplicationName(String name) {
 		if (null == name || name.isEmpty()) {
 			throw new IllegalArgumentException("Application name is null or empty");
@@ -176,6 +217,11 @@ public class IRODSApi {
 		return mh.intInfo;
 	}
 
+	/**
+	 * A class which enables users to configure various connection options.
+	 * 
+	 * @since 0.1.0
+	 */
 	public static final class ConnectionOptions {
 		public String clientServerNegotiation = "CS_NEG_REFUSE";
 
@@ -512,7 +558,8 @@ public class IRODSApi {
 		return receiveServerResponse(comm, RodsObjStat_PI.class, output, null);
 	}
 
-	public static int rcGenQuery(RcComm comm, GenQueryInp_PI input, Reference<GenQueryOut_PI> output) throws IOException {
+	public static int rcGenQuery(RcComm comm, GenQueryInp_PI input, Reference<GenQueryOut_PI> output)
+			throws IOException {
 		sendApiRequest(comm.socket, 702, input);
 		return receiveServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
