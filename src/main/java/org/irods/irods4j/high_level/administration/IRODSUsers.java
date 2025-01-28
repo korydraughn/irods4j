@@ -33,7 +33,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 public class IRODSUsers {
 
 	/**
-	 * 
+	 * An enumeration which defines all user types supported by iRODS.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -42,7 +42,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * A class designed to represent an iRODS user.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -51,9 +51,25 @@ public class IRODSUsers {
 		public String name;
 		public String zone;
 
+		/**
+		 * Initializes a {@link User} without a name or zone.
+		 * 
+		 * It is the developer's responsibility to make sure objects constructed via
+		 * this constructor are updated with non-null values before use.
+		 * 
+		 * @since 0.1.0
+		 */
 		public User() {
 		}
 
+		/**
+		 * Initializes a {@link User} with the given name and zone.
+		 * 
+		 * @param name The unqualified name component of the username.
+		 * @param zone The zone component of the username.
+		 * 
+		 * @since 0.1.0
+		 */
 		public User(String name, Optional<String> zone) {
 			this.name = name;
 			this.zone = zone.orElse("");
@@ -85,7 +101,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * A class designed to represent an iRODS group.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -93,9 +109,22 @@ public class IRODSUsers {
 
 		public String name;
 
+		/**
+		 * Initializes a {@link Group} without a name.
+		 * 
+		 * It is the developer's responsibility to make sure objects constructed via
+		 * this constructor are updated with non-null values before use.
+		 * 
+		 * @since 0.1.0
+		 */
 		public Group() {
 		}
 
+		/**
+		 * Initializes a {@link Group} with the target name.
+		 * 
+		 * @param name The name of the group.
+		 */
 		public Group(String name) {
 			this.name = name;
 		}
@@ -121,7 +150,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * Defines the set of operations for manipulating user authentication names.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -130,7 +159,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * The base class which modifiable user properties are derived from.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -138,7 +167,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * Holds the new password for a user. Primarily used to modify a user.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -148,7 +177,7 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * Holds the new type of a user. Primarily used to modify a user.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -157,7 +186,8 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * 
+	 * TODO Consider removing support for this. It's probably not used by modern
+	 * iRODS systems.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -167,10 +197,11 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Converts a string to a {@link UserType} enumeration.
 	 * 
-	 * @param v
+	 * @param v The string to convert.
 	 * 
-	 * @return
+	 * @return The enum representation of the string.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -191,10 +222,11 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Converts a {@link UserType} enumeration to a string.
 	 * 
-	 * @param v
+	 * @param v The enumeration to convert.
 	 * 
-	 * @return
+	 * @return The string representation of the enumeration.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -212,11 +244,13 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Generates the unique name of a user in the local zone.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to produce the unique name for.
 	 * 
-	 * @return
+	 * @return A string representing the unique name of the user within the local
+	 *         zone.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -239,11 +273,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Adds a new user to the local zone.
 	 * 
-	 * @param comm
-	 * @param user
-	 * @param userType
-	 * @param zoneType
+	 * @param comm     The connection to the iRODS server.
+	 * @param user     The user to add.
+	 * @param userType The type of the user.
+	 * @param zoneType The zone that is responsible for the user.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -309,9 +344,10 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Removes a user from the local zone.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to remove.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -340,10 +376,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Modifies a property of a user.
 	 * 
-	 * @param comm
-	 * @param user
-	 * @param property
+	 * @param comm     The connection to the iRODS server.
+	 * @param user     The user to modify.
+	 * @param property An object containing the required information for applying
+	 *                 the change.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -398,9 +436,10 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Adds a new group to the local zone.
 	 * 
-	 * @param comm
-	 * @param group
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to add.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -451,9 +490,10 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Removes a group from the local zone.
 	 * 
-	 * @param comm
-	 * @param group
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to remove.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -482,10 +522,11 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Adds a user to a group.
 	 * 
-	 * @param comm
-	 * @param group
-	 * @param user
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to add the user to.
+	 * @param user  The user to add to the group.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -543,10 +584,11 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Removes a user from a group.
 	 * 
-	 * @param comm
-	 * @param group
-	 * @param user
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group that contains the user.
+	 * @param user  The user to remove from the group.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -604,10 +646,14 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns all users in the local zone.
 	 * 
-	 * @param comm
+	 * The size of the list will be clamped to 100000 elements. If that is too small
+	 * for your needs, consider using GenQuery directly.
 	 * 
-	 * @return
+	 * @param comm The connection to the iRODS server.
+	 * 
+	 * @return A list of users.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -620,7 +666,7 @@ public class IRODSUsers {
 		}
 
 		var input = new Genquery2Input_PI();
-		input.query_string = "select USER_NAME, USER_ZONE where USER_TYPE != 'rodsgroup'";
+		input.query_string = "select USER_NAME, USER_ZONE where USER_TYPE != 'rodsgroup' limit 100000";
 
 		var output = new Reference<String>();
 
@@ -641,11 +687,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns all users in a group.
 	 * 
-	 * @param comm
-	 * @param group
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to check.
 	 * 
-	 * @return
+	 * @return A list of users.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -680,10 +727,14 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns all groups in the local zone.
 	 * 
-	 * @param comm
+	 * The size of the list will be clamped to 100000 elements. If that is too small
+	 * for your needs, consider using GenQuery directly.
 	 * 
-	 * @return
+	 * @param comm The connection to the iRODS server.
+	 * 
+	 * @return A list of groups.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -696,7 +747,7 @@ public class IRODSUsers {
 		}
 
 		var input = new Genquery2Input_PI();
-		input.query_string = "select USER_NAME where USER_TYPE = 'rodsgroup'";
+		input.query_string = "select USER_NAME where USER_TYPE = 'rodsgroup' limit 100000";
 
 		var output = new Reference<String>();
 
@@ -717,11 +768,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns all groups a user is a member of.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to check for.
 	 * 
-	 * @return
+	 * @return A list of groups.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -749,11 +801,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Checks if a user exists in the catalog.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to find.
 	 * 
-	 * @return
+	 * @return A boolean indicating whether the user exists.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -788,11 +841,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Checks if a group exists in the catalog.
 	 * 
-	 * @param comm
-	 * @param group
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to find.
 	 * 
-	 * @return
+	 * @return A boolean indicating whether the group exists.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -826,11 +880,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns the ID of a user.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to find.
 	 * 
-	 * @return
+	 * @return An optional which will contain the user's ID if the user exists.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -869,11 +924,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns the ID of a group.
 	 * 
-	 * @param comm
-	 * @param group
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to find.
 	 * 
-	 * @return
+	 * @return An optional which will contain the group's ID if the group exists.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -911,11 +967,12 @@ public class IRODSUsers {
 	}
 
 	/**
+	 * Returns the type of a user.
 	 * 
-	 * @param comm
-	 * @param user
+	 * @param comm The connection to the iRODS server.
+	 * @param user The user to find.
 	 * 
-	 * @return
+	 * @return An optional which will contain the user's type if the user exists.
 	 * 
 	 * @throws IOException
 	 * @throws IRODSException
@@ -954,13 +1011,41 @@ public class IRODSUsers {
 	}
 
 	/**
-	 * TODO
+	 * Checks if a user is a member of a group.
+	 * 
+	 * @param comm  The connection to the iRODS server.
+	 * @param group The group to check.
+	 * @param user  The user to look for.
+	 * 
+	 * @return A boolean indicating whether the user is a member of the group.
+	 * 
+	 * @throws IOException
+	 * @throws IRODSException
 	 * 
 	 * @since 0.1.0
 	 */
-	public static boolean userIsMemberOfGroup(RcComm comm, Group group, User user) {
-		// TODO Disabled until GenQuery2 provides better support for groups.
-		throw new UnsupportedOperationException("Not implemented yet");
+	public static boolean userIsMemberOfGroup(RcComm comm, Group group, User user) throws IOException, IRODSException {
+		var input = new GenQuery1QueryArgs();
+		// select USER_ID ...
+		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_ID);
+		// where USER_TYPE != 'rodsgroup' ...
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_TYPE, "!= 'rodsgroup'");
+		// and USER_NAME = '<name>' ...
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_NAME, String.format("= '%s'", user.name));
+		// and USER_ZONE = '<zone>' ...
+		var zone = user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone;
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_ZONE, String.format("= '%s'", zone));
+		// and USER_GROUP_NAME = '<group>'
+		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_GROUP_NAME, String.format("= '%s'", group.name));
+
+		var userIds = new ArrayList<String>();
+
+		IRODSQuery.executeGenQuery1(comm, input, row -> {
+			userIds.add(row.get(0));
+			return true;
+		});
+
+		return !userIds.isEmpty();
 	}
 
 	private static String obfuscatePassword(UserPasswordProperty p, String hashAlgo) throws NoSuchAlgorithmException {
