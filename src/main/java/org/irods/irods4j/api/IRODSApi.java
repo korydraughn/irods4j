@@ -138,7 +138,7 @@ public class IRODSApi {
 
 		// Send request.
 		Network.write(socket, mh);
-		Network.writeXml(socket, data);
+		Network.writeBytes(socket, msgbody.getBytes(StandardCharsets.UTF_8));
 	}
 
 	private static void sendApiRequest(Socket socket, int apiNumber, Object data, byte[] bytes) throws IOException {
@@ -153,7 +153,7 @@ public class IRODSApi {
 
 		// Send request.
 		Network.write(socket, mh);
-		Network.writeXml(socket, data);
+		Network.writeBytes(socket, msgbody.getBytes(StandardCharsets.UTF_8));
 		Network.writeBytes(socket, bytes);
 	}
 
