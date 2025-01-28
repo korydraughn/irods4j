@@ -11,6 +11,7 @@ public class IRODSKeywords {
 	public static final String COLLECTION = "collection";
 	public static final String COLLECTION_MTIME = "collectionMtime";
 	public static final String COPIES = "copies";
+	public static final String DEST_RESC_NAME = "destRescName";
 	public static final String FILE_PATH = "filePath";
 	public static final String FORCE_CHKSUM = "forceChksum";
 	public static final String FORCE_FLAG = "forceFlag";
