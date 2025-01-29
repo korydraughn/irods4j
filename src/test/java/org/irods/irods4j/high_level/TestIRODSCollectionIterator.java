@@ -58,11 +58,10 @@ class TestIRODSCollectionIterator {
 	void testIteratingOverCollectionHoldingAllHomeCollections() throws Exception {
 		var paths = new ArrayList<String>();
 		var collection = Paths.get("/", zone, "home").toString();
-		try (var iterator = new IRODSCollectionIterator(conn.getRcComm(), collection)) {
-			for (var e : iterator) {
-				paths.add(e.path());
-			}
+		for (var e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
+			paths.add(e.path());
 		}
+		paths.forEach(log::debug);
 		assertFalse(paths.isEmpty());
 	}
 
@@ -70,10 +69,8 @@ class TestIRODSCollectionIterator {
 	void testIteratingOverAnEmptyCollection() throws Exception {
 		var paths = new ArrayList<String>();
 		var collection = Paths.get("/", zone, "home", "public").toString();
-		try (var iterator = new IRODSCollectionIterator(conn.getRcComm(), collection)) {
-			for (var e : iterator) {
-				paths.add(e.path());
-			}
+		for (var e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
+			paths.add(e.path());
 		}
 		assertTrue(paths.isEmpty());
 	}

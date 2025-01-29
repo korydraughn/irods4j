@@ -1,11 +1,13 @@
 package org.irods.irods4j.high_level.vfs;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Stack;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.high_level.vfs.IRODSCollectionIterator.CollectionOptions;
 
 /**
@@ -14,7 +16,7 @@ import org.irods.irods4j.high_level.vfs.IRODSCollectionIterator.CollectionOption
  * 
  * @since 0.1.0
  */
-public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntry>, AutoCloseable {
+public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntry> {
 
 	private static final Logger log = LogManager.getLogger();
 
@@ -31,9 +33,14 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 * @param comm        A connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
 	 * @since 0.1.0
 	 */
-	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath) {
+	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath)
+			throws IRODSFilesystemException, IOException, IRODSException {
 		this(comm, logicalPath, CollectionOptions.NONE);
 	}
 
@@ -45,9 +52,14 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 * @param options     Options affecting the behavior of the iterator. Currently
 	 *                    unused.
 	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
 	 * @since 0.1.0
 	 */
-	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, CollectionOptions options) {
+	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, CollectionOptions options)
+			throws IRODSFilesystemException, IOException, IRODSException {
 		var iter = new IRODSCollectionIterator(comm, logicalPath, options);
 		curIter = (IRODSCollectionIterator.CollectionEntryIterator) iter.iterator();
 		stack = new Stack<>();
@@ -55,20 +67,6 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 
 		this.comm = comm;
 		this.options = options;
-	}
-
-	/**
-	 * Closes the iterator if open.
-	 * 
-	 * The iterator can be re-opened after this operation.
-	 * 
-	 * @since 0.1.0
-	 */
-	@Override
-	public void close() throws Exception {
-		for (var iter : stack) {
-			iter.close();
-		}
 	}
 
 	/**
@@ -109,16 +107,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 		if (stack.isEmpty()) {
 			return;
 		}
-
-		var iter = stack.pop();
-
-		// If the closing of an iterator experiences an error, just log and ignore it.
-		try {
-			iter.close();
-		} catch (Exception e) {
-			log.error(e.getMessage());
-		}
-
+		stack.pop();
 		curIter = stack.isEmpty() ? null : (IRODSCollectionIterator.CollectionEntryIterator) stack.peek().iterator();
 	}
 
@@ -166,7 +155,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 				// The iterator at the top of the stack has visited all entries.
 				// Remove it from the stack.
 				try {
-					iter.stack.pop().close();
+					iter.stack.pop();
 				} catch (Exception e) {
 					log.error(e.getMessage());
 				}
@@ -186,31 +175,26 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 		public CollectionEntry next() {
 			var addedNewCollection = false;
 			var entry = iter.curIter.next();
-			log.debug("next - Entry is [{}].", entry.path);
 
 			if (entry.isCollection() && iter.recurse) {
-				log.debug("next - Entry is a collection.");
-				var tmpIter = new IRODSCollectionIterator(iter.comm, entry.path, iter.options);
-				var iterator = tmpIter.iterator();
+				IRODSCollectionIterator tmpIter = null;
+				try {
+					tmpIter = new IRODSCollectionIterator(iter.comm, entry.path, iter.options);
+				} catch (IOException | IRODSException e) {
+					log.error(e.getMessage());
+				}
 
-				log.debug("next - Checking if collection is empty.");
-				// Only add the collection if it contains entries.
-				if (iterator.hasNext()) {
-					log.debug("next - Pushing collection on the stack.");
-					addedNewCollection = true;
-					iter.stack.push(tmpIter);
-					iter.curIter = (IRODSCollectionIterator.CollectionEntryIterator) iterator;
-					entry = iterator.next();
-				} else {
-					try {
-						log.debug("next - Collection is empty. Closing the temp iterator.");
-						tmpIter.close();
-					} catch (Exception e) {
-						log.error(e.getMessage());
+				if (null != tmpIter) {
+					var iterator = tmpIter.iterator();
+
+					// Only add the collection if it contains entries.
+					if (iterator.hasNext()) {
+						addedNewCollection = true;
+						iter.stack.push(tmpIter);
+						iter.curIter = (IRODSCollectionIterator.CollectionEntryIterator) iterator;
+						entry = iterator.next();
 					}
 				}
-			} else {
-				log.debug("next - Entry is NOT a data object.");
 			}
 
 			if (!addedNewCollection) {
