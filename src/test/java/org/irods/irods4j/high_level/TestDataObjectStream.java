@@ -1,19 +1,33 @@
 package org.irods.irods4j.high_level;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.api.IRODSApi.ByteArrayReference;
 import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.XmlUtil;
+import org.irods.irods4j.high_level.connection.IRODSConnectionPool;
+import org.irods.irods4j.high_level.connection.QualifiedUsername;
 import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
+import org.irods.irods4j.high_level.io.IRODSDataObjectStream.OnCloseSuccess;
+import org.irods.irods4j.high_level.io.IRODSDataObjectStream.SeekDirection;
+import org.irods.irods4j.high_level.vfs.IRODSFilesystem;
+import org.irods.irods4j.high_level.vfs.IRODSFilesystem.RemoveOptions;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,9 +57,10 @@ class TestDataObjectStream {
 
 	@AfterAll
 	static void tearDownAfterClass() throws Exception {
+		IRODSApi.rcDisconnect(comm);
+
 		XmlUtil.disablePrettyPrinting();
 		JsonUtil.disablePrettyPrinting();
-		IRODSApi.rcDisconnect(comm);
 	}
 
 	@Test
@@ -69,6 +84,130 @@ class TestDataObjectStream {
 
 		in.close();
 		assertFalse(in.isOpen());
+	}
+
+	@Test
+	void testParallelTransferOverPort1247() throws Exception {
+		var logicalPath = Paths.get("/", zone, "home", username, "testParallelTransferOverPort1247.txt").toString();
+		var streamCount = 3;
+
+		try (var connPool = new IRODSConnectionPool(streamCount)) {
+			connPool.start(host, port, new QualifiedUsername(username, zone), conn -> {
+				try {
+					IRODSApi.rcAuthenticateClient(conn, "native", password);
+					return true;
+				} catch (Exception e) {
+					return false;
+				}
+			});
+
+			// Create the primary data stream. This stream must be closed last so that
+			// policy fires appropriately.
+			try (var stream1 = new IRODSDataObjectStream(); var conn1 = connPool.getConnection()) {
+				stream1.open(conn1.getRcComm(), logicalPath,
+						OpenFlags.O_CREAT | OpenFlags.O_WRONLY | OpenFlags.O_TRUNC);
+
+				// These are needed so that iRODS knows they are for the parallel transfer.
+				var replicaToken = stream1.getReplicaToken();
+				var replicaNumber = stream1.getReplicaNumber();
+
+				try (var stream2 = new IRODSDataObjectStream();
+						var stream3 = new IRODSDataObjectStream();
+						var conn2 = connPool.getConnection();
+						var conn3 = connPool.getConnection()) {
+					// Open the secondary streams using the replica token and replica number from
+					// the primary stream.
+					stream2.open(conn2.getRcComm(), replicaToken, logicalPath, replicaNumber, OpenFlags.O_WRONLY);
+					stream3.open(conn3.getRcComm(), replicaToken, logicalPath, replicaNumber, OpenFlags.O_WRONLY);
+
+					// Seek the appropriate offsets.
+					stream2.seek(100, SeekDirection.BEGIN);
+					stream3.seek(200, SeekDirection.BEGIN);
+
+					// Write the bytes.
+
+					var threadPool = Executors.newFixedThreadPool(streamCount);
+					var threadExperiencedAnError = new AtomicBoolean();
+
+					var future1 = threadPool.submit(() -> {
+						var buffer = new byte[100];
+						Arrays.fill(buffer, (byte) 'A');
+						try {
+							stream1.write(buffer, 100);
+						} catch (IOException | IRODSException e) {
+							threadExperiencedAnError.set(true);
+						}
+					});
+
+					var future2 = threadPool.submit(() -> {
+						var buffer = new byte[100];
+						Arrays.fill(buffer, (byte) 'B');
+						try {
+							stream2.write(buffer, 100);
+						} catch (IOException | IRODSException e) {
+							threadExperiencedAnError.set(true);
+						}
+					});
+
+					var future3 = threadPool.submit(() -> {
+						var buffer = new byte[100];
+						Arrays.fill(buffer, (byte) 'C');
+						try {
+							stream3.write(buffer, 100);
+						} catch (IOException | IRODSException e) {
+							threadExperiencedAnError.set(true);
+						}
+					});
+					
+					// Wait for each thread to finish.
+					future1.get();
+					future2.get();
+					future3.get();
+
+					// Make sure none of the threads threw an exception.
+					assertFalse(threadExperiencedAnError.get());
+
+					// Instruct the secondary streams to not update the catalog or trigger policy on
+					// close.
+					var closeInstructions = new OnCloseSuccess();
+					closeInstructions.updateSize = false;
+					closeInstructions.updateStatus = false;
+					closeInstructions.computeChecksum = false;
+					closeInstructions.sendNotifications = false;
+					closeInstructions.preserveReplicaStateTable = false;
+
+					stream2.close(closeInstructions);
+					stream3.close(closeInstructions);
+				}
+			}
+
+			// The primary stream is closed automatically using the default options. The
+			// default options to ".close()" update the replica's status, trm, host));
+			var dataSize = IRODSFilesystem.dataObjectSize(comm, logicalPath);
+			assertEquals(dataSize, 300);
+
+			// Read the contents of the data object and assert it is what we wrote.
+			try (var in = new IRODSDataObjectStream(); var conn1 = connPool.getConnection()) {
+				in.open(conn1.getRcComm(), logicalPath, OpenFlags.O_RDONLY);
+
+				var byteArrayRef = new ByteArrayReference();
+				byteArrayRef.data = new byte[300];
+				// Read the data.
+				var bytesRead = in.read(byteArrayRef, byteArrayRef.data.length);
+				assertEquals(bytesRead, byteArrayRef.data.length);
+
+				// Create a buffer containing the expected contents.
+				var expected = new byte[300];
+				Arrays.fill(expected, 0, 100, (byte) 'A');
+				Arrays.fill(expected, 100, 200, (byte) 'B');
+				Arrays.fill(expected, 200, 300, (byte) 'C');
+
+				// Show the buffers contain identical data.
+				assertArrayEquals(byteArrayRef.data, expected);
+			}
+		} finally {
+			IRODSFilesystem.remove(comm, logicalPath, RemoveOptions.NO_TRASH);
+		}
 	}
 
 }
