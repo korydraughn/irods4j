@@ -85,7 +85,9 @@ public class Network {
 	}
 
 	public static void writeBytes(Socket socket, byte[] bytes) throws IOException {
-		socket.getOutputStream().write(bytes);
+		var out = socket.getOutputStream();
+		out.write(bytes);
+		out.flush();
 	}
 
 }
