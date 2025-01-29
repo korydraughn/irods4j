@@ -158,7 +158,7 @@ class TestDataObjectStream {
 							threadExperiencedAnError.set(true);
 						}
 					});
-					
+
 					// Wait for each thread to finish.
 					future1.get();
 					future2.get();
@@ -182,7 +182,8 @@ class TestDataObjectStream {
 			}
 
 			// The primary stream is closed automatically using the default options. The
-			// default options to ".close()" update the replica's status, trm, host));
+			// default options to ".close()" update the replica's status, size, and trigger
+			// policy.
 			var dataSize = IRODSFilesystem.dataObjectSize(comm, logicalPath);
 			assertEquals(dataSize, 300);
 
