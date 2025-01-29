@@ -38,7 +38,7 @@ public class IRODSUsers {
 	 * @since 0.1.0
 	 */
 	public static enum UserType {
-		RODSUSER, GROUPADMIN, RODSADMIN
+		RODSUSER, GROUPADMIN, RODSADMIN, RODSGROUP
 	}
 
 	/**
@@ -218,7 +218,11 @@ public class IRODSUsers {
 			return UserType.RODSADMIN;
 		}
 
-		throw new IllegalArgumentException("User type not supported");
+		if ("rodsgroup".equals(v)) {
+			return UserType.RODSGROUP;
+		}
+
+		throw new IllegalArgumentException("User type not supported: " + v);
 	}
 
 	/**
