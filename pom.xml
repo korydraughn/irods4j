@@ -10,7 +10,21 @@
 		<maven.compiler.release>17</maven.compiler.release>
 
 		<log4j.version>2.24.3</log4j.version>
+		<junit.version>5.11.4</junit.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Defines the version used by all junit dependencies. -->
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>${junit.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
@@ -33,6 +47,11 @@
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
 			<version>${log4j.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
