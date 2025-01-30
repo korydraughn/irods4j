@@ -146,14 +146,10 @@ public class IRODSFilesystem {
 					}
 				}
 
-				try (var iterator = new IRODSCollectionIterator(comm, from)) {
-					for (var e : iterator) {
-						var objectName = Paths.get(e.path).getFileName().toString();
-						var toPath = Paths.get(to, objectName).toString();
-						copy(comm, e.path, toPath, copyOptions | CopyOptions.IN_RECURSIVE_COPY);
-					}
-				} catch (Exception e) {
-					throw new IRODSException(IRODSErrorCodes.SYS_LIBRARY_ERROR, e.getMessage());
+				for (var e : new IRODSCollectionIterator(comm, from)) {
+					var objectName = Paths.get(e.path).getFileName().toString();
+					var toPath = Paths.get(to, objectName).toString();
+					copy(comm, e.path, toPath, copyOptions | CopyOptions.IN_RECURSIVE_COPY);
 				}
 			}
 		}
@@ -1408,12 +1404,8 @@ public class IRODSFilesystem {
 				"Object type is not supported", path);
 	}
 
-	private static boolean isCollectionEmpty(RcComm comm, String path) throws IRODSException {
-		try (var iter = new IRODSCollectionIterator(comm, path)) {
-			return iter.iterator().hasNext();
-		} catch (Exception e) {
-			throw new IRODSException(IRODSErrorCodes.SYS_LIBRARY_ERROR, e.getMessage());
-		}
+	private static boolean isCollectionEmpty(RcComm comm, String path) throws IRODSException, IOException {
+		return new IRODSCollectionIterator(comm, path).iterator().hasNext();
 	}
 
 }
