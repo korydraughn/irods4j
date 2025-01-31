@@ -182,10 +182,10 @@ public class IRODSRules {
 				// makes it easier for users of the library to write good code.
 
 				var bbbuf = ruleExecOut.BinBytesBuf_PI.get(0);
-				results.put("stdout", (bbbuf.buflen > 0) ? bbbuf.decode().trim() : "");
+				results.put("stdout", (bbbuf.buflen > 0) ? bbbuf.buf.trim() : "");
 
 				bbbuf = ruleExecOut.BinBytesBuf_PI.get(1);
-				results.put("stderr", (bbbuf.buflen > 0) ? bbbuf.decode().trim() : "");
+				results.put("stderr", (bbbuf.buflen > 0) ? bbbuf.buf.trim() : "");
 			}
 		}
 

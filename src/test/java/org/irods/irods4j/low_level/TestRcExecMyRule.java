@@ -87,9 +87,9 @@ class TestRcExecMyRule {
 		
 		var ruleExecOut = (ExecCmdOut_PI) output.value.MsParam_PI.get(0).inOutStruct;
 		assertEquals(ruleExecOut.status, 0);
-		log.debug("stdout buffer = {}", ruleExecOut.BinBytesBuf_PI.get(0).decode());
-		log.debug("stdout length (whitespace trimmed) = {}", ruleExecOut.BinBytesBuf_PI.get(0).decode().trim().length());
-		assertTrue((text + " 2").equals(ruleExecOut.BinBytesBuf_PI.get(0).decode().trim()));
+		log.debug("stdout buffer = {}", ruleExecOut.BinBytesBuf_PI.get(0).buf);
+		log.debug("stdout length (whitespace trimmed) = {}", ruleExecOut.BinBytesBuf_PI.get(0).buf.trim().length());
+		assertTrue((text + " 2").equals(ruleExecOut.BinBytesBuf_PI.get(0).buf.trim()));
 	}
 
 }

@@ -1,6 +1,7 @@
 package org.irods.irods4j.authentication;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -69,7 +70,10 @@ public abstract class AuthPlugin {
 
 	protected JsonNode request(RcComm comm, JsonNode msg) throws IOException, IRODSException {
 		var json = JsonUtil.toJsonString(msg);
-		var msgbody = XmlUtil.toXmlString(new BinBytesBuf_PI(json));
+		var bbbuf = new BinBytesBuf_PI();
+		bbbuf.buf = json;
+		bbbuf.buflen = json.length();
+		var msgbody = XmlUtil.toXmlString(bbbuf);
 
 		var hdr = new MsgHeader_PI();
 		hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
@@ -77,21 +81,23 @@ public abstract class AuthPlugin {
 		hdr.intInfo = 110000; // New auth plugin framework API number.
 
 		Network.write(comm.socket, hdr);
-		Network.writeXml(comm.socket, new BinBytesBuf_PI(json));
+		Network.writeBytes(comm.socket, msgbody.getBytes(StandardCharsets.UTF_8));
 
 		// Read the message header from the server.
 		var mh = Network.readMsgHeader_PI(comm.socket);
-		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+		if (log.isDebugEnabled()) {
+			log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
+		}
 
 		// Check for errors.
 		if (mh.intInfo < 0) {
 			throw new IRODSException(mh.intInfo, "Client request error");
 		}
 
-		var bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
+		bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
 //		log.debug("Received BinBytesBuf_PI: {}", bbbuf.decode());
 		var jm = JsonUtil.getJsonMapper();
-		return jm.readTree(bbbuf.decode());
+		return jm.readTree(bbbuf.buf);
 	}
 
 }

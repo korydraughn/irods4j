@@ -579,7 +579,7 @@ public class IRODSApi {
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 		return ec;
 	}
@@ -612,20 +612,24 @@ public class IRODSApi {
 	}
 
 	public static int rcReplicaClose(RcComm comm, String closeOptions) throws IOException {
-		var input = new BinBytesBuf_PI(closeOptions);
+		var input = new BinBytesBuf_PI();
+		input.buf = closeOptions;
+		input.buflen = closeOptions.length();
 		sendApiRequest(comm.socket, 20004, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcAtomicApplyMetadataOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
-		var bbbuf = new BinBytesBuf_PI(input);
+		var bbbuf = new BinBytesBuf_PI();
+		bbbuf.buf = input;
+		bbbuf.buflen = input.length();
 		sendApiRequest(comm.socket, 20002, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 
 		return ec;
@@ -633,20 +637,24 @@ public class IRODSApi {
 
 	public static int rcAtomicApplyAclOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
-		var bbbuf = new BinBytesBuf_PI(input);
+		var bbbuf = new BinBytesBuf_PI();
+		bbbuf.buf = input;
+		bbbuf.buflen = input.length();
 		sendApiRequest(comm.socket, 20005, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 
 		return ec;
 	}
 
 	public static int rcTouch(RcComm comm, String input) throws IOException {
-		var bbbuf = new BinBytesBuf_PI(input);
+		var bbbuf = new BinBytesBuf_PI();
+		bbbuf.buf = input;
+		bbbuf.buflen = input.length();
 		sendApiRequest(comm.socket, 20007, bbbuf);
 		return receiveServerResponse(comm, null, null, null);
 	}
@@ -675,20 +683,22 @@ public class IRODSApi {
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 
 		return ec;
 	}
 
 	public static int rcGetFileDescriptorInfo(RcComm comm, String input, Reference<String> output) throws IOException {
-		var bbbuf = new BinBytesBuf_PI(input);
+		var bbbuf = new BinBytesBuf_PI();
+		bbbuf.buf = input;
+		bbbuf.buflen = input.length();
 		sendApiRequest(comm.socket, 20000, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 
 		return ec;
@@ -746,7 +756,7 @@ public class IRODSApi {
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
-			output.value = outputPI.value.decode();
+			output.value = outputPI.value.buf;
 		}
 		return ec;
 	}

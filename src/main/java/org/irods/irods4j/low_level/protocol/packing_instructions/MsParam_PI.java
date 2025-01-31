@@ -30,7 +30,9 @@ public class MsParam_PI {
 		mp.label = "*x";
 		mp.type = "STR_PI";
 		mp.inOutStruct = inoutstruct;
-		mp.BinBytesBuf_PI = new BinBytesBuf_PI("testing testing 1 2 3");
+		mp.BinBytesBuf_PI = new BinBytesBuf_PI();
+		mp.BinBytesBuf_PI.buf = "testing testing 1 2 3";
+		mp.BinBytesBuf_PI.buflen = mp.BinBytesBuf_PI.buf.length();
 
 		var xm = new XmlMapper();
 		xm.enable(SerializationFeature.INDENT_OUTPUT);

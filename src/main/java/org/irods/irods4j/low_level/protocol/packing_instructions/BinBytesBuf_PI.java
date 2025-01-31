@@ -1,22 +1,16 @@
 package org.irods.irods4j.low_level.protocol.packing_instructions;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import org.irods.irods4j.low_level.util.BinBytesBuf_PI_Deserializer;
+import org.irods.irods4j.low_level.util.BinBytesBuf_PI_Serializer;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+@JsonSerialize(using = BinBytesBuf_PI_Serializer.class)
+@JsonDeserialize(using = BinBytesBuf_PI_Deserializer.class)
 public class BinBytesBuf_PI {
 
 	public int buflen;
 	public String buf;
 	
-	public BinBytesBuf_PI() {}
-
-	public BinBytesBuf_PI(String data) {
-		buf = Base64.getEncoder().encodeToString(data.getBytes());
-		buflen = data.length();
-	}
-
-	public String decode() {
-		return new String(Base64.getDecoder().decode(buf), StandardCharsets.UTF_8);
-	}
-
 }
