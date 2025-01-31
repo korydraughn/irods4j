@@ -32,7 +32,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 * Initializes a newly created recursive iterator such that all entries within
 	 * the collection and its subcollections will be visited.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * 
 	 * @throws IRODSException
@@ -49,7 +49,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	/**
 	 * Initializes a newly created recursive iterator.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
 	 *                    needed.
@@ -68,7 +68,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	/**
 	 * Initializes a newly created recursive iterator.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * @param options     Options affecting the behavior of the iterator. Currently
 	 *                    unused.
@@ -87,7 +87,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	/**
 	 * Initializes a newly created recursive iterator.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
 	 *                    needed.
