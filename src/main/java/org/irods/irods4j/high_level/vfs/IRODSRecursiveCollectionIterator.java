@@ -20,6 +20,8 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 
 	private static final Logger log = LogManager.getLogger();
 
+	private static final int DEFAULT_NUMBER_OF_ROWS_PER_PAGE = 512;
+
 	private RcComm comm;
 	private Stack<IRODSCollectionIterator> stack;
 	private IRODSCollectionIterator.CollectionEntryIterator curIter;
@@ -49,6 +51,25 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 * 
 	 * @param comm        A connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
+	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
+	 *                    needed.
+	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
+	 * @since 0.1.0
+	 */
+	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, int rowsPerPage)
+			throws IRODSFilesystemException, IOException, IRODSException {
+		this(comm, logicalPath, rowsPerPage, CollectionOptions.NONE);
+	}
+
+	/**
+	 * Initializes a newly created recursive iterator.
+	 * 
+	 * @param comm        A connection to the iRODS server.
+	 * @param logicalPath The absolute path to a collection.
 	 * @param options     Options affecting the behavior of the iterator. Currently
 	 *                    unused.
 	 * 
@@ -60,7 +81,28 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 */
 	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, CollectionOptions options)
 			throws IRODSFilesystemException, IOException, IRODSException {
-		var iter = new IRODSCollectionIterator(comm, logicalPath, options);
+		this(comm, logicalPath, DEFAULT_NUMBER_OF_ROWS_PER_PAGE, options);
+	}
+
+	/**
+	 * Initializes a newly created recursive iterator.
+	 * 
+	 * @param comm        A connection to the iRODS server.
+	 * @param logicalPath The absolute path to a collection.
+	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
+	 *                    needed.
+	 * @param options     Options affecting the behavior of the iterator. Currently
+	 *                    unused.
+	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
+	 * @since 0.1.0
+	 */
+	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, int rowsPerPage, CollectionOptions options)
+			throws IRODSFilesystemException, IOException, IRODSException {
+		var iter = new IRODSCollectionIterator(comm, logicalPath, rowsPerPage, options);
 		curIter = (IRODSCollectionIterator.CollectionEntryIterator) iter.iterator();
 		stack = new Stack<>();
 		stack.push(iter);
@@ -179,7 +221,8 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 			if (entry.isCollection() && iter.recurse) {
 				IRODSCollectionIterator tmpIter = null;
 				try {
-					tmpIter = new IRODSCollectionIterator(iter.comm, entry.path, iter.options);
+					tmpIter = new IRODSCollectionIterator(iter.comm, entry.path, iter.stack.peek().getRowsPerPage(),
+							iter.options);
 				} catch (IOException | IRODSException e) {
 					log.error(e.getMessage());
 				}

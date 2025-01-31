@@ -23,8 +23,11 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 
 	private static final Logger log = LogManager.getLogger();
 
+	private static final int DEFAULT_NUMBER_OF_ROWS_PER_PAGE = 512;
+
 	private RcComm comm;
 	private String logicalPath;
+	private int rowsPerPage;
 
 	@SuppressWarnings("unused")
 	private CollectionOptions collOptions;
@@ -43,8 +46,14 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 	// implementation for details on when this gets set to true.
 	private boolean searchForCollections = false;
 
+	// Used to build up a query string efficiently. The query which exists in the
+	// buffer is used to fetch the next page.
+	private StringBuilder querySb;
+
 	/**
 	 * Options which affect the behavior of the iterator.
+	 * 
+	 * Only {@code NONE} is supported at this time.
 	 * 
 	 * @since 0.1.0
 	 */
@@ -53,10 +62,9 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 	}
 
 	/**
-	 * Initializes a newly created iterator such that all entries within the
-	 * collection will be visited.
+	 * Initializes a newly created iterator.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * 
 	 * @throws IRODSException
@@ -75,7 +83,28 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 	/**
 	 * Initializes a newly created iterator.
 	 * 
-	 * @param comm        A connection to the iRODS server.
+	 * @param comm        The connection to the iRODS server.
+	 * @param logicalPath The absolute path to a collection.
+	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
+	 *                    needed.
+	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
+	 * @throws IllegalArgumentException If invalid inputs are passed.
+	 * 
+	 * @since 0.1.0
+	 */
+	public IRODSCollectionIterator(RcComm comm, String logicalPath, int rowsPerPage)
+			throws IRODSFilesystemException, IOException, IRODSException {
+		this(comm, logicalPath, rowsPerPage, CollectionOptions.NONE);
+	}
+
+	/**
+	 * Initializes a newly created iterator.
+	 * 
+	 * @param comm        The connection to the iRODS server.
 	 * @param logicalPath The absolute path to a collection.
 	 * @param options     Options affecting the behavior of the iterator. Currently
 	 *                    unused.
@@ -88,6 +117,27 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 	 */
 	public IRODSCollectionIterator(RcComm comm, String logicalPath, CollectionOptions options)
 			throws IRODSFilesystemException, IOException, IRODSException {
+		this(comm, logicalPath, DEFAULT_NUMBER_OF_ROWS_PER_PAGE, options);
+	}
+
+	/**
+	 * Initializes a newly created iterator.
+	 * 
+	 * @param comm        The connection to the iRODS server.
+	 * @param logicalPath The absolute path to a collection.
+	 * @param rowsPerPage The max number of rows to fetch when a new page of data is
+	 *                    needed.
+	 * @param options     Options affecting the behavior of the iterator. Currently
+	 *                    unused.
+	 * 
+	 * @throws IRODSException
+	 * @throws IOException
+	 * @throws IRODSFilesystemException
+	 * 
+	 * @since 0.1.0
+	 */
+	public IRODSCollectionIterator(RcComm comm, String logicalPath, int rowsPerPage, CollectionOptions options)
+			throws IRODSFilesystemException, IOException, IRODSException {
 		if (null == comm) {
 			throw new IllegalArgumentException("RcComm is null");
 		}
@@ -96,13 +146,27 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 			throw new IllegalArgumentException("Logical path is null or empty");
 		}
 
+		if (rowsPerPage < 1) {
+			throw new IllegalArgumentException("Rows per page is less than 1");
+		}
+
 		if (null == options) {
 			throw new IllegalArgumentException("Collection options is null");
 		}
 
 		this.comm = comm;
 		this.logicalPath = logicalPath;
+		this.rowsPerPage = rowsPerPage;
 		collOptions = options;
+	}
+
+	/**
+	 * Returns the max number of rows a single page may contain.
+	 * 
+	 * @since 0.1.0
+	 */
+	public int getRowsPerPage() {
+		return rowsPerPage;
 	}
 
 	@Override
@@ -116,9 +180,6 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 	 * @since 0.1.0
 	 */
 	public static final class CollectionEntryIterator implements Iterator<CollectionEntry> {
-
-		private static final String collQueryFmtStr = "select COLL_ID, COLL_NAME, COLL_CREATE_TIME, COLL_MODIFY_TIME where COLL_PARENT_NAME = '%s'";
-		private static final String dataObjectQueryFmtStr = "select DATA_ID, DATA_NAME, DATA_SIZE, DATA_CHECKSUM, DATA_MODE, DATA_CREATE_TIME, DATA_MODIFY_TIME where COLL_NAME = '%s'";
 
 		private IRODSCollectionIterator iter;
 
@@ -134,6 +195,7 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 			iter.rowIndex = 0;
 			iter.addPivotCondition = false;
 			iter.searchForCollections = false;
+			iter.querySb = new StringBuilder(512);
 		}
 
 		@Override
@@ -153,8 +215,11 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 			}
 
 			if (!iter.searchForCollections) {
-				// TODO Consider building this string one time.
-				var query = String.format(dataObjectQueryFmtStr, iter.logicalPath);
+				iter.querySb.delete(0, iter.querySb.length());
+				iter.querySb.append(
+						"select DATA_ID, DATA_NAME, DATA_SIZE, DATA_CHECKSUM, DATA_MODE, DATA_CREATE_TIME, DATA_MODIFY_TIME where COLL_NAME = '");
+				iter.querySb.append(iter.logicalPath);
+				iter.querySb.append("'");
 
 				// All rows have been visited within the current page.
 				if (iter.addPivotCondition) {
@@ -162,14 +227,18 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 
 					// Update the query to find the next page of rows. The next page begins after
 					// the ID of the last row within the current set of rows.
-					query += String.format(" and DATA_ID > '%s' order by DATA_ID limit 256",
-							iter.rows.get(iter.rows.size() - 1).get(0));
+					iter.querySb.append(" and DATA_ID > '");
+					iter.querySb.append(iter.rows.get(iter.rows.size() - 1).get(0));
+					iter.querySb.append("' order by DATA_ID limit ");
+					iter.querySb.append(iter.rowsPerPage);
 				} else {
-					query += " order by DATA_ID limit 256";
+					iter.querySb.append(" order by DATA_ID limit ");
+					iter.querySb.append(iter.rowsPerPage);
 				}
 
 				try {
-					iter.rows = IRODSQuery.executeGenQuery2(iter.comm, iter.comm.proxyUserZone, query);
+					iter.rows = IRODSQuery.executeGenQuery2(iter.comm, iter.comm.proxyUserZone,
+							iter.querySb.toString());
 					if (!iter.rows.isEmpty()) {
 						return true;
 					}
@@ -182,8 +251,11 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 			}
 
 			if (iter.searchForCollections) {
-				// TODO Consider building this string one time.
-				var query = String.format(collQueryFmtStr, iter.logicalPath);
+				iter.querySb.delete(0, iter.querySb.length());
+				iter.querySb.append(
+						"select COLL_ID, COLL_NAME, COLL_CREATE_TIME, COLL_MODIFY_TIME where COLL_PARENT_NAME = '");
+				iter.querySb.append(iter.logicalPath);
+				iter.querySb.append("'");
 
 				// All rows have been visited within the current page.
 				if (iter.addPivotCondition) {
@@ -191,14 +263,18 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 
 					// Update the query to find the next page of rows. The next page begins after
 					// the ID of the last row within the current set of rows.
-					query += String.format(" and COLL_ID > '%s' order by COLL_ID limit 256",
-							iter.rows.get(iter.rows.size() - 1).get(0));
+					iter.querySb.append(" and COLL_ID > '");
+					iter.querySb.append(iter.rows.get(iter.rows.size() - 1).get(0));
+					iter.querySb.append("' order by COLL_ID limit ");
+					iter.querySb.append(iter.rowsPerPage);
 				} else {
-					query += " order by COLL_ID limit 256";
+					iter.querySb.append(" order by COLL_ID limit ");
+					iter.querySb.append(iter.rowsPerPage);
 				}
 
 				try {
-					iter.rows = IRODSQuery.executeGenQuery2(iter.comm, iter.comm.proxyUserZone, query);
+					iter.rows = IRODSQuery.executeGenQuery2(iter.comm, iter.comm.proxyUserZone,
+							iter.querySb.toString());
 					// Terminate because collections are processed after data objects.
 					return !iter.rows.isEmpty();
 				} catch (IOException | IRODSException e) {
