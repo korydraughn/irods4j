@@ -1,6 +1,6 @@
 package org.irods.irods4j.high_level.vfs;
 
-import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSException;
 
 public class IRODSFilesystemException extends IRODSException {
 	

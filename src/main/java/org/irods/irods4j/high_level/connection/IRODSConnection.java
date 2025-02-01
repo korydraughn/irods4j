@@ -3,10 +3,10 @@ package org.irods.irods4j.high_level.connection;
 import java.io.IOException;
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
-import org.irods.irods4j.api.IRODSApi.ConnectionOptions;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi.ConnectionOptions;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RErrMsg_PI;
 
 /**

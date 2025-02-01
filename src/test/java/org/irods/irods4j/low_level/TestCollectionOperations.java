@@ -8,9 +8,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
-import org.irods.irods4j.api.IRODSApi.RcComm;
 import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollInpNew_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.CollOprStat_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;

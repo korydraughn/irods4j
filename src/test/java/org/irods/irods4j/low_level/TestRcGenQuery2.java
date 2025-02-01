@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;

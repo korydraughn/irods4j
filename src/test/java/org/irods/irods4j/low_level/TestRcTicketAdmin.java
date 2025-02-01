@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
-import org.irods.irods4j.api.IRODSApi.RcComm;
+import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.TicketAdminInp_PI;
 import org.junit.jupiter.api.AfterAll;

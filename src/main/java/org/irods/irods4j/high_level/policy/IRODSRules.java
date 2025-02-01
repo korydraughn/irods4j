@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
-import org.irods.irods4j.api.IRODSKeywords;
 import org.irods.irods4j.common.Reference;
+import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSKeywords;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ExecCmdOut_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.ExecMyRuleInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;

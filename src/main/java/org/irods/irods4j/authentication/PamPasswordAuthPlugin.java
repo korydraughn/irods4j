@@ -4,9 +4,9 @@ import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.JsonUtil;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

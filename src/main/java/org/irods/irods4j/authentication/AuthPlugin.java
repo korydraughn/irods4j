@@ -9,10 +9,10 @@ import javax.naming.NameNotFoundException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.XmlUtil;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.network.Network;
 import org.irods.irods4j.low_level.protocol.packing_instructions.BinBytesBuf_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsgHeader_PI;

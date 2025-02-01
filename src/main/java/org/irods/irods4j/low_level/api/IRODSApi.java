@@ -1,4 +1,4 @@
-package org.irods.irods4j.api;
+package org.irods.irods4j.low_level.api;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;

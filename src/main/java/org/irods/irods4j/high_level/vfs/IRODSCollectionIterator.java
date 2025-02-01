@@ -7,10 +7,10 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.api.IRODSApi.RcComm;
-import org.irods.irods4j.api.IRODSException;
 import org.irods.irods4j.high_level.catalog.IRODSQuery;
 import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
+import org.irods.irods4j.low_level.api.IRODSException;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 
 /**
  * A class which makes it easy to iterate over the contents of a collection.

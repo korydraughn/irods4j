@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Optional;
 
-import org.irods.irods4j.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSApi;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RErrMsg_PI;
 import org.junit.jupiter.api.Test;
 

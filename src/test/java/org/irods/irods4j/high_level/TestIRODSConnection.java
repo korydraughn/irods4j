@@ -11,7 +11,6 @@ import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.irods.irods4j.api.IRODSApi;
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
 import org.irods.irods4j.common.XmlUtil;
@@ -21,6 +20,7 @@ import org.irods.irods4j.high_level.administration.IRODSUsers.UserType;
 import org.irods.irods4j.high_level.administration.IRODSZones.ZoneType;
 import org.irods.irods4j.high_level.connection.IRODSConnection;
 import org.irods.irods4j.high_level.connection.QualifiedUsername;
+import org.irods.irods4j.low_level.api.IRODSApi;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.RodsObjStat_PI;
 import org.junit.jupiter.api.AfterAll;
