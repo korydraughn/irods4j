@@ -2,6 +2,7 @@ package org.irods.irods4j.api;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -236,6 +237,17 @@ public class IRODSApi {
 
 		public String hashAlgorithm = "md5";
 
+		public boolean enableTcpKeepAlive = true;
+		public boolean enableTcpNoDelay = false;
+
+		public int tcpSendBufferSize = -1;
+		public int tcpReceiveBufferSize = -1;
+
+		public boolean applySocketPerformancePreferences = false;
+		public int ppConnectionTime = 0;
+		public int ppLatency = 0;
+		public int ppBandwidth = 0;
+
 		public ConnectionOptions copy() {
 			var copy = new ConnectionOptions();
 
@@ -251,6 +263,17 @@ public class IRODSApi {
 			copy.encryptionSaltSize = encryptionSaltSize;
 
 			copy.hashAlgorithm = hashAlgorithm;
+
+			copy.enableTcpKeepAlive = enableTcpKeepAlive;
+			copy.enableTcpNoDelay = enableTcpNoDelay;
+
+			copy.tcpSendBufferSize = tcpSendBufferSize;
+			copy.tcpReceiveBufferSize = tcpReceiveBufferSize;
+
+			copy.applySocketPerformancePreferences = applySocketPerformancePreferences;
+			copy.ppConnectionTime = ppConnectionTime;
+			copy.ppLatency = ppLatency;
+			copy.ppBandwidth = ppBandwidth;
 
 			return copy;
 		}
@@ -278,7 +301,33 @@ public class IRODSApi {
 		var connOptions = options.orElse(new ConnectionOptions());
 
 		RcComm comm = new RcComm();
-		comm.socket = comm.plainSocket = new Socket(host, port);
+		comm.socket = comm.plainSocket = new Socket();
+
+		comm.socket.setKeepAlive(connOptions.enableTcpKeepAlive);
+		comm.socket.setTcpNoDelay(connOptions.enableTcpNoDelay);
+
+		if (connOptions.tcpSendBufferSize > 0) {
+			log.debug("Old socket send buffer size = {}", comm.socket.getSendBufferSize());
+			comm.socket.setSendBufferSize(connOptions.tcpSendBufferSize);
+			log.debug("New socket send buffer size = {}", comm.socket.getSendBufferSize());
+		} else {
+			log.debug("Socket send buffer size = {}", comm.socket.getSendBufferSize());
+		}
+
+		if (connOptions.tcpReceiveBufferSize > 0) {
+			log.debug("Old socket receive buffer size = {}", comm.socket.getReceiveBufferSize());
+			comm.socket.setReceiveBufferSize(connOptions.tcpReceiveBufferSize);
+			log.debug("New socket receive buffer size = {}", comm.socket.getReceiveBufferSize());
+		} else {
+			log.debug("Socket receive buffer size = {}", comm.socket.getReceiveBufferSize());
+		}
+
+		if (connOptions.applySocketPerformancePreferences) {
+			comm.socket.setPerformancePreferences(connOptions.ppConnectionTime, connOptions.ppLatency,
+					connOptions.ppBandwidth);
+		}
+
+		comm.socket.connect(new InetSocketAddress(host, port));
 
 		// Create the StartupPack message.
 		// This is how a connection to iRODS is always initiated.
