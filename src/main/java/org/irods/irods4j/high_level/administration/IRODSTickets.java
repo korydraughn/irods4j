@@ -5,9 +5,9 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 
 import org.irods.irods4j.low_level.api.IRODSApi;
+import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.api.IRODSException;
 import org.irods.irods4j.low_level.api.IRODSKeywords;
-import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.TicketAdminInp_PI;
 
