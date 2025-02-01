@@ -206,8 +206,22 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 					return true;
 				}
 
-				// At this point, we know we need the next page of data.
-				iter.addPivotCondition = true;
+				// This is an optimization which avoids an unnecessary network call to the
+				// server just to detect an empty resultset. If the number of rows in the
+				// current page is less than the max number of rows that can be held by a page,
+				// then we know there's no point in querying the catalog again. The query would
+				// simply return an empty resultset.
+				if (iter.rows.size() < iter.rowsPerPage) {
+					if (iter.searchForCollections) {
+						return false;
+					} else {
+						iter.searchForCollections = true;
+						iter.addPivotCondition = false;
+					}
+				} else {
+					// At this point, we know we need the next page of data.
+					iter.addPivotCondition = true;
+				}
 
 				// Unlike the constructor, the row index must be set to the first row since it
 				// will be used to retrieve an entry from the page, if rows exist.
