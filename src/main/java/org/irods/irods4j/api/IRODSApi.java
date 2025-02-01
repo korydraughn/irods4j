@@ -1,7 +1,11 @@
 package org.irods.irods4j.api;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -99,6 +103,9 @@ public class IRODSApi {
 		public Socket plainSocket;
 		public SSLSocket sslSocket;
 
+		public InputStream sin;
+		public OutputStream sout;
+
 		public boolean usingTLS = false;
 		public boolean secure = false;
 		public boolean loggedIn = false;
@@ -159,17 +166,18 @@ public class IRODSApi {
 		appName = name;
 	}
 
-	private static void sendApiRequest(Socket socket, int apiNumber) throws IOException {
+	private static void sendApiRequest(OutputStream out, int apiNumber) throws IOException {
 		// Create the header describing the message.
 		var mh = new MsgHeader_PI();
 		mh.type = MsgHeader_PI.MsgType.RODS_API_REQ;
 		mh.intInfo = apiNumber;
 
 		// Send request.
-		Network.write(socket, mh);
+		Network.write(out, mh);
+		out.flush();
 	}
 
-	private static void sendApiRequest(Socket socket, int apiNumber, Object data) throws IOException {
+	private static void sendApiRequest(OutputStream out, int apiNumber, Object data) throws IOException {
 		var msgbody = XmlUtil.toXmlString(data);
 
 		// Create the header describing the message.
@@ -179,11 +187,12 @@ public class IRODSApi {
 		mh.msgLen = msgbody.length();
 
 		// Send request.
-		Network.write(socket, mh);
-		Network.writeBytes(socket, msgbody.getBytes(StandardCharsets.UTF_8));
+		Network.write(out, mh);
+		Network.writeBytes(out, msgbody.getBytes(StandardCharsets.UTF_8));
+		out.flush();
 	}
 
-	private static void sendApiRequest(Socket socket, int apiNumber, Object data, byte[] bytes) throws IOException {
+	private static void sendApiRequest(OutputStream out, int apiNumber, Object data, byte[] bytes) throws IOException {
 		var msgbody = XmlUtil.toXmlString(data);
 
 		// Create the header describing the message.
@@ -194,25 +203,26 @@ public class IRODSApi {
 		mh.bsLen = bytes.length;
 
 		// Send request.
-		Network.write(socket, mh);
-		Network.writeBytes(socket, msgbody.getBytes(StandardCharsets.UTF_8));
-		Network.writeBytes(socket, bytes);
+		Network.write(out, mh);
+		Network.writeBytes(out, msgbody.getBytes(StandardCharsets.UTF_8));
+		Network.writeBytes(out, bytes);
+		out.flush();
 	}
 
 	private static <T> int receiveServerResponse(RcComm comm, Class<T> targetClass, Reference<T> output,
 			ByteArrayReference bsBuffer) throws IOException {
-		var mh = Network.readMsgHeader_PI(comm.socket);
+		var mh = Network.readMsgHeader_PI(comm.sin);
 
 		if (mh.msgLen > 0 && null != targetClass) {
-			output.value = Network.readObject(comm.socket, mh.msgLen, targetClass);
+			output.value = Network.readObject(comm.sin, mh.msgLen, targetClass);
 		}
 
 		if (mh.errorLen > 0) {
-			comm.rError = Network.readObject(comm.socket, mh.errorLen, RError_PI.class);
+			comm.rError = Network.readObject(comm.sin, mh.errorLen, RError_PI.class);
 		}
 
 		if (mh.bsLen > 0 && null != bsBuffer) {
-			bsBuffer.data = Network.readBytes(comm.socket, mh.bsLen);
+			bsBuffer.data = Network.readBytes(comm.sin, mh.bsLen);
 		}
 
 		return mh.intInfo;
@@ -329,6 +339,9 @@ public class IRODSApi {
 
 		comm.socket.connect(new InetSocketAddress(host, port));
 
+		comm.sin = new BufferedInputStream(comm.socket.getInputStream());
+		comm.sout = new BufferedOutputStream(comm.socket.getOutputStream());
+
 		// Create the StartupPack message.
 		// This is how a connection to iRODS is always initiated.
 		var sp = new StartupPack_PI();
@@ -345,11 +358,12 @@ public class IRODSApi {
 		hdr.msgLen = msgbody.length();
 
 		// Send the message header and StartupPack (i.e. the message body).
-		Network.write(comm.socket, hdr);
-		Network.writeXml(comm.socket, sp);
+		Network.write(comm.sout, hdr);
+		Network.writeBytes(comm.sout, msgbody.getBytes(StandardCharsets.UTF_8));
+		comm.sout.flush();
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
+		var mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		if (mh.intInfo < 0) {
@@ -365,7 +379,7 @@ public class IRODSApi {
 		// Prepare to the negotiate whether a secure communication
 		// channel is needed. The server's response will contain its
 		// choice for secure communication.
-		var csneg = Network.readObject(comm.socket, mh.msgLen, CS_NEG_PI.class);
+		var csneg = Network.readObject(comm.sin, mh.msgLen, CS_NEG_PI.class);
 		log.debug("Received CS_NEG_PI: {}", XmlUtil.toXmlString(csneg));
 
 		// Check for negotiation errors.
@@ -382,11 +396,12 @@ public class IRODSApi {
 		msgbody = XmlUtil.toXmlString(csneg);
 		hdr.type = MsgHeader_PI.MsgType.RODS_CS_NEG_T;
 		hdr.msgLen = msgbody.length();
-		Network.write(comm.socket, hdr);
-		Network.writeXml(comm.socket, csneg);
+		Network.write(comm.sout, hdr);
+		Network.writeBytes(comm.sout, msgbody.getBytes(StandardCharsets.UTF_8));
+		comm.sout.flush();
 
 		// Read the message header from the server.
-		mh = Network.readMsgHeader_PI(comm.socket);
+		mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		if (mh.intInfo < 0) {
@@ -398,7 +413,7 @@ public class IRODSApi {
 		}
 
 		// Capture the server version information.
-		var vers = Network.readObject(comm.socket, mh.msgLen, Version_PI.class);
+		var vers = Network.readObject(comm.sin, mh.msgLen, Version_PI.class);
 		log.debug("Received Version_PI: {}", XmlUtil.toXmlString(vers));
 		comm.apiVersion = vers.apiVersion;
 		comm.relVersion = vers.relVersion;
@@ -528,7 +543,8 @@ public class IRODSApi {
 		mh.errorLen = options.encryptionSaltSize;
 		mh.bsLen = options.encryptionNumHashRounds;
 
-		Network.write(comm.sslSocket, mh);
+		var sout = new BufferedOutputStream(comm.sslSocket.getOutputStream());
+		Network.write(sout, mh);
 
 		// Generate a random byte sequence as a key and send it to the server.
 		var key = new byte[options.encryptionKeySize];
@@ -546,8 +562,9 @@ public class IRODSApi {
 		mh.bsLen = 0;
 		mh.intInfo = 0;
 
-		Network.write(comm.sslSocket, mh);
-		Network.writeXml(comm.sslSocket, bbuf);
+		Network.write(sout, mh);
+		Network.writeBytes(sout, msgbody.getBytes(StandardCharsets.UTF_8));
+		sout.flush();
 
 		// TODO Do equivalent of sslPostConnectionCheck().
 		// See sslSockComm.cpp#L90 on the main branch. The function of
@@ -567,10 +584,10 @@ public class IRODSApi {
 	private static int rcSslStart(RcComm comm) throws IOException {
 		var input = new SSLStartInp_PI();
 		input.arg0 = null;
-		sendApiRequest(comm.socket, 1100, input);
+		sendApiRequest(comm.sout, 1100, input);
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
+		var mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		return mh.intInfo;
@@ -579,10 +596,10 @@ public class IRODSApi {
 	// TODO Consider removing this function.
 	private static int rcSslEnd(RcComm comm) throws IOException {
 		var input = new SSLEndInp_PI();
-		sendApiRequest(comm.socket, 1101, input);
+		sendApiRequest(comm.sout, 1101, input);
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
+		var mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		return mh.intInfo;
@@ -591,7 +608,7 @@ public class IRODSApi {
 	public static void rcDisconnect(RcComm comm) throws IOException {
 		final var hdr = new MsgHeader_PI();
 		hdr.type = MsgHeader_PI.MsgType.RODS_DISCONNECT;
-		Network.write(comm.socket, hdr);
+		Network.write(comm.sout, hdr);
 		comm.socket.close();
 	}
 
@@ -603,18 +620,18 @@ public class IRODSApi {
 	}
 
 	public static int rcObjStat(RcComm comm, DataObjInp_PI input, Reference<RodsObjStat_PI> output) throws IOException {
-		sendApiRequest(comm.socket, 633, input);
+		sendApiRequest(comm.sout, 633, input);
 		return receiveServerResponse(comm, RodsObjStat_PI.class, output, null);
 	}
 
 	public static int rcGenQuery(RcComm comm, GenQueryInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 702, input);
+		sendApiRequest(comm.sout, 702, input);
 		return receiveServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcGenQuery2(RcComm comm, Genquery2Input_PI input, Reference<String> output) throws IOException {
-		sendApiRequest(comm.socket, 10221, input);
+		sendApiRequest(comm.sout, 10221, input);
 		var outputPI = new Reference<STR_PI>();
 		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -624,7 +641,7 @@ public class IRODSApi {
 	}
 
 	public static int rcReplicaOpen(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
-		sendApiRequest(comm.socket, 20003, input);
+		sendApiRequest(comm.sout, 20003, input);
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -634,7 +651,7 @@ public class IRODSApi {
 	}
 
 	public static int rcReplicaTruncate(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
-		sendApiRequest(comm.socket, 802, input);
+		sendApiRequest(comm.sout, 802, input);
 		var outputPI = new Reference<STR_PI>();
 		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -645,18 +662,18 @@ public class IRODSApi {
 
 	public static int rcDataObjLseek(RcComm comm, OpenedDataObjInp_PI input, Reference<FileLseekOut_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 674, input);
+		sendApiRequest(comm.sout, 674, input);
 		return receiveServerResponse(comm, FileLseekOut_PI.class, output, null);
 	}
 
 	public static int rcDataObjRead(RcComm comm, OpenedDataObjInp_PI input, ByteArrayReference byteArray)
 			throws IOException {
-		sendApiRequest(comm.socket, 675, input);
+		sendApiRequest(comm.sout, 675, input);
 		return receiveServerResponse(comm, null, null, byteArray);
 	}
 
 	public static int rcDataObjWrite(RcComm comm, OpenedDataObjInp_PI input, byte[] buffer) throws IOException {
-		sendApiRequest(comm.socket, 676, input, buffer);
+		sendApiRequest(comm.sout, 676, input, buffer);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
@@ -664,7 +681,7 @@ public class IRODSApi {
 		var input = new BinBytesBuf_PI();
 		input.buf = closeOptions;
 		input.buflen = closeOptions.length();
-		sendApiRequest(comm.socket, 20004, input);
+		sendApiRequest(comm.sout, 20004, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
@@ -673,7 +690,7 @@ public class IRODSApi {
 		var bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
-		sendApiRequest(comm.socket, 20002, bbbuf);
+		sendApiRequest(comm.sout, 20002, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
@@ -689,7 +706,7 @@ public class IRODSApi {
 		var bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
-		sendApiRequest(comm.socket, 20005, bbbuf);
+		sendApiRequest(comm.sout, 20005, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
@@ -704,30 +721,30 @@ public class IRODSApi {
 		var bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
-		sendApiRequest(comm.socket, 20007, bbbuf);
+		sendApiRequest(comm.sout, 20007, bbbuf);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcGetGridConfigurationValue(RcComm comm, GridConfigurationInp_PI input,
 			Reference<GridConfigurationOut_PI> output) throws IOException {
-		sendApiRequest(comm.socket, 20009, input);
+		sendApiRequest(comm.sout, 20009, input);
 		return receiveServerResponse(comm, GridConfigurationOut_PI.class, output, null);
 	}
 
 	public static int rcSetGridConfigurationValue(RcComm comm, GridConfigurationInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 20010, input);
+		sendApiRequest(comm.sout, 20010, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcSetDelayServerMigrationInfo(RcComm comm, DelayServerMigrationInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 20011, input);
+		sendApiRequest(comm.sout, 20011, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcGetDelayRuleInfo(RcComm comm, String input, Reference<String> output) throws IOException {
 		var strPI = new STR_PI();
 		strPI.myStr = input;
-		sendApiRequest(comm.socket, 20013, strPI);
+		sendApiRequest(comm.sout, 20013, strPI);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
@@ -742,7 +759,7 @@ public class IRODSApi {
 		var bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
-		sendApiRequest(comm.socket, 20000, bbbuf);
+		sendApiRequest(comm.sout, 20000, bbbuf);
 
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
@@ -770,7 +787,7 @@ public class IRODSApi {
 			return 0;
 		}
 
-		sendApiRequest(comm.socket, 20012, input);
+		sendApiRequest(comm.sout, 20012, input);
 		var ec = receiveServerResponse(comm, null, null, null);
 
 		if (0 == ec) {
@@ -789,7 +806,7 @@ public class IRODSApi {
 
 	public static int rcCheckAuthCredentials(RcComm comm, DataObjInp_PI input, Reference<Integer> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 800, input);
+		sendApiRequest(comm.sout, 800, input);
 		var outputPI = new Reference<INT_PI>();
 		var ec = receiveServerResponse(comm, INT_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -801,7 +818,7 @@ public class IRODSApi {
 	// TODO Should this API be exposed to clients?
 	public static int rcRegisterPhysicalPath(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 20008, input);
+		sendApiRequest(comm.sout, 20008, input);
 		var outputPI = new Reference<BinBytesBuf_PI>();
 		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -811,49 +828,49 @@ public class IRODSApi {
 	}
 
 	public static int rcModAVUMetadata(RcComm comm, ModAVUMetadataInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 706, input);
+		sendApiRequest(comm.sout, 706, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModAccessControl(RcComm comm, ModAccessControlInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 707, input);
+		sendApiRequest(comm.sout, 707, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModDataObjMeta(RcComm comm, ModDataObjMeta_PI input) throws IOException {
-		sendApiRequest(comm.socket, 622, input);
+		sendApiRequest(comm.sout, 622, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjectModifyInfo(RcComm comm, ModDataObjMeta_PI input) throws IOException {
-		sendApiRequest(comm.socket, 20001, input);
+		sendApiRequest(comm.sout, 20001, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjRename(RcComm comm, DataObjCopyInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 627, input);
+		sendApiRequest(comm.sout, 627, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjCopy(RcComm comm, DataObjCopyInp_PI input, Reference<TransferStat_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 696, input);
+		sendApiRequest(comm.sout, 696, input);
 		return receiveServerResponse(comm, TransferStat_PI.class, output, null);
 	}
 
 	public static int rcDataObjRepl(RcComm comm, DataObjInp_PI input, Reference<TransferStat_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 695, input);
+		sendApiRequest(comm.sout, 695, input);
 		return receiveServerResponse(comm, TransferStat_PI.class, output, null);
 	}
 
 	public static int rcDataObjCreate(RcComm comm, DataObjInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 601, input);
+		sendApiRequest(comm.sout, 601, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjChksum(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
-		sendApiRequest(comm.socket, 629, input);
+		sendApiRequest(comm.sout, 629, input);
 		var outputPI = new Reference<STR_PI>();
 		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -863,83 +880,83 @@ public class IRODSApi {
 	}
 
 	public static int rcDataObjUnlink(RcComm comm, DataObjInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 615, input);
+		sendApiRequest(comm.sout, 615, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDataObjTrim(RcComm comm, DataObjInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 632, input);
+		sendApiRequest(comm.sout, 632, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDelayRuleLock(RcComm comm, DelayRuleLockInput_PI input) throws IOException {
-		sendApiRequest(comm.socket, 10222, input);
+		sendApiRequest(comm.sout, 10222, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcDelayRuleUnlock(RcComm comm, DelayRuleUnlockInput_PI input) throws IOException {
-		sendApiRequest(comm.socket, 10223, input);
+		sendApiRequest(comm.sout, 10223, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcCollCreate(RcComm comm, CollInpNew_PI input) throws IOException {
-		sendApiRequest(comm.socket, 681, input);
+		sendApiRequest(comm.sout, 681, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcModColl(RcComm comm, CollInpNew_PI input) throws IOException {
-		sendApiRequest(comm.socket, 680, input);
+		sendApiRequest(comm.sout, 680, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcOpenCollection(RcComm comm, CollInpNew_PI input) throws IOException {
-		sendApiRequest(comm.socket, 678, input);
+		sendApiRequest(comm.sout, 678, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcReadCollection(RcComm comm, int handle, Reference<CollEnt_PI> output) throws IOException {
 		var input = new INT_PI();
 		input.myInt = handle;
-		sendApiRequest(comm.socket, 713, input);
+		sendApiRequest(comm.sout, 713, input);
 		return receiveServerResponse(comm, CollEnt_PI.class, output, null);
 	}
 
 	public static int rcCloseCollection(RcComm comm, int handle) throws IOException {
 		var input = new INT_PI();
 		input.myInt = handle;
-		sendApiRequest(comm.socket, 661, input);
+		sendApiRequest(comm.sout, 661, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcRmColl(RcComm comm, CollInpNew_PI input, Reference<CollOprStat_PI> output) throws IOException {
-		sendApiRequest(comm.socket, 679, input);
+		sendApiRequest(comm.sout, 679, input);
 		return receiveServerResponse(comm, CollOprStat_PI.class, output, null);
 	}
 
 	public static int rcTicketAdmin(RcComm comm, TicketAdminInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 723, input);
+		sendApiRequest(comm.sout, 723, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcUnregDataObj(RcComm comm, UnregDataObj_PI input) throws IOException {
-		sendApiRequest(comm.socket, 620, input);
+		sendApiRequest(comm.sout, 620, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcUserAdmin(RcComm comm, UserAdminInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 714, input);
+		sendApiRequest(comm.sout, 714, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcSpecificQuery(RcComm comm, SpecificQueryInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 722, input);
+		sendApiRequest(comm.sout, 722, input);
 		return receiveServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcGetResourceInfoForOperation(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 10220, input);
+		sendApiRequest(comm.sout, 10220, input);
 		var outputPI = new Reference<STR_PI>();
 		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -949,35 +966,35 @@ public class IRODSApi {
 	}
 
 	public static int rcZoneReport(RcComm comm, Reference<BytesBuf_PI> output) throws IOException {
-		sendApiRequest(comm.socket, 10205);
+		sendApiRequest(comm.sout, 10205);
 		return receiveServerResponse(comm, BytesBuf_PI.class, output, null);
 	}
 
 	public static int rcGetMiscSvrInfo(RcComm comm, Reference<MiscSvrInfo_PI> output) throws IOException {
-		sendApiRequest(comm.socket, 700);
+		sendApiRequest(comm.sout, 700);
 		return receiveServerResponse(comm, MiscSvrInfo_PI.class, output, null);
 	}
 
 	public static int rcGeneralAdmin(RcComm comm, GeneralAdminInp_PI input) throws IOException {
-		sendApiRequest(comm.socket, 701, input);
+		sendApiRequest(comm.sout, 701, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcExecMyRule(RcComm comm, ExecMyRuleInp_PI input, Reference<MsParamArray_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 625, input);
+		sendApiRequest(comm.sout, 625, input);
 		return receiveServerResponse(comm, MsParamArray_PI.class, output, null);
 	}
 
 	public static int rcProcStat(RcComm comm, ProcStatInp_PI input, Reference<GenQueryOut_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 690);
+		sendApiRequest(comm.sout, 690);
 		return receiveServerResponse(comm, GenQueryOut_PI.class, output, null);
 	}
 
 	public static int rcRuleExecSubmit(RcComm comm, RULE_EXEC_DEL_INP_PI input, Reference<String> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 623, input);
+		sendApiRequest(comm.sout, 623, input);
 		var outputPI = new Reference<IRODS_STR_PI>();
 		var ec = receiveServerResponse(comm, IRODS_STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
@@ -987,19 +1004,19 @@ public class IRODSApi {
 	}
 
 	public static int rcRuleExecMod(RcComm comm, RULE_EXEC_MOD_INP_PI input) throws IOException {
-		sendApiRequest(comm.socket, 708, input);
+		sendApiRequest(comm.sout, 708, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	public static int rcRuleExecDel(RcComm comm, RULE_EXEC_DEL_INP_PI input) throws IOException {
-		sendApiRequest(comm.socket, 624, input);
+		sendApiRequest(comm.sout, 624, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
 	// TODO This API is likely for server-side use only due to it only being invoked
 	// within the server. Consider removing this.
 	private static int rcRegReplica(RcComm comm, RegReplica_PI input) throws IOException {
-		sendApiRequest(comm.socket, 621, input);
+		sendApiRequest(comm.sout, 621, input);
 		return receiveServerResponse(comm, null, null, null);
 	}
 
@@ -1008,12 +1025,12 @@ public class IRODSApi {
 	// it from the public interface. Consider removing this.
 	private static int rcRegDataOb(RcComm comm, DataObjInfo_PI input, Reference<DataObjInfo_PI> output)
 			throws IOException {
-		sendApiRequest(comm.socket, 619, input);
+		sendApiRequest(comm.sout, 619, input);
 		return receiveServerResponse(comm, DataObjInfo_PI.class, output, null);
 	}
 
 	public static int rcGetLibraryFeatures(RcComm comm, Reference<String> output) throws IOException {
-		sendApiRequest(comm.socket, 801);
+		sendApiRequest(comm.sout, 801);
 		var outputPI = new Reference<STR_PI>();
 		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {

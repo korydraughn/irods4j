@@ -40,7 +40,7 @@ public abstract class AuthPlugin {
 	// the developer can implement ahead of time, I think. Then again, the plugin
 	// may be designed to prompt the client at certain times.
 	public static final String AUTH_FORCE_PASSWORD_PROMPT = "force_password_prompt";
-	
+
 	// Client Options
 	public static final String AUTH_USER_KEY = "a_user";
 	public static final String AUTH_SCHEME_KWY = "a_scheme";
@@ -80,11 +80,12 @@ public abstract class AuthPlugin {
 		hdr.msgLen = msgbody.length();
 		hdr.intInfo = 110000; // New auth plugin framework API number.
 
-		Network.write(comm.socket, hdr);
-		Network.writeBytes(comm.socket, msgbody.getBytes(StandardCharsets.UTF_8));
+		Network.write(comm.sout, hdr);
+		Network.writeBytes(comm.sout, msgbody.getBytes(StandardCharsets.UTF_8));
+		comm.sout.flush();
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.socket);
+		var mh = Network.readMsgHeader_PI(comm.sin);
 		if (log.isDebugEnabled()) {
 			log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 		}
@@ -94,8 +95,11 @@ public abstract class AuthPlugin {
 			throw new IRODSException(mh.intInfo, "Client request error");
 		}
 
-		bbbuf = Network.readObject(comm.socket, mh.msgLen, BinBytesBuf_PI.class);
-//		log.debug("Received BinBytesBuf_PI: {}", bbbuf.decode());
+		// TODO Can rError information be returned here? If so, that would break this
+		// implementation because we don't handle it. Although it would be weird if the
+		// check above indicated success and rError information existed in the stream.
+
+		bbbuf = Network.readObject(comm.sin, mh.msgLen, BinBytesBuf_PI.class);
 		var jm = JsonUtil.getJsonMapper();
 		return jm.readTree(bbbuf.buf);
 	}
