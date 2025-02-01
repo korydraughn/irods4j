@@ -109,11 +109,11 @@ public class CollectionEntry implements Comparable<CollectionEntry> {
 	}
 
 	/**
-	 * Returns the data id of the filesystem object.
+	 * Returns the ID of the filesystem object.
 	 * 
 	 * @since 0.1.0
 	 */
-	public String dataId() {
+	public String id() {
 		return dataId;
 	}
 
