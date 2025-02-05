@@ -10,8 +10,8 @@ public class DataObjCopyInp_PI {
 	public DataObjInp_PI[] DataObjInp_PI = new DataObjInp_PI[2];
 
 	public static void main(String[] args) throws JsonProcessingException {
-		var xm = new XmlMapper();
-		var v = new DataObjCopyInp_PI();
+		XmlMapper xm = new XmlMapper();
+		DataObjCopyInp_PI v = new DataObjCopyInp_PI();
 		System.out.println(xm.writeValueAsString(v));
 	}
 

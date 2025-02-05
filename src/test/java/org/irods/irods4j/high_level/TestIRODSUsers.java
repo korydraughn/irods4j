@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -62,23 +63,23 @@ class TestIRODSUsers {
 	@Test
 	void testModifyPasswordOfDifferentUser() throws Exception {
 		// Generate a random password for the rodsuser.
-		var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-		var rnd = new Random();
-		var pwSb = new StringBuilder();
-		var psLength = rnd.nextInt(4, 40);
+		String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		Random rnd = new Random();
+		StringBuilder pwSb = new StringBuilder();
+		int psLength = 4 + rnd.nextInt(36); // Equivalent to rnd.nextInt(4, 40) in Java 17.
 		for (int i = 0; i < psLength; ++i) {
 			pwSb.append(chars.charAt(rnd.nextInt(chars.length())));
 		}
-		var rodsuserPassword = pwSb.toString();
+		String rodsuserPassword = pwSb.toString();
 
 		// Change the rodsuser's password.
-		var prop = new IRODSUsers.UserPasswordProperty();
+		IRODSUsers.UserPasswordProperty prop = new IRODSUsers.UserPasswordProperty();
 		prop.value = rodsuserPassword;
 		prop.requesterPassword = password;
 		assertDoesNotThrow(() -> IRODSUsers.modifyUser(comm, rodsuser, prop));
 
 		// Show that the rodsuser can authenticate using the updated password.
-		var comm1 = IRODSApi.rcConnect(host, port, rodsuser.name, rodsuser.zone, Optional.empty(), Optional.empty(),
+		RcComm comm1 = IRODSApi.rcConnect(host, port, rodsuser.name, rodsuser.zone, Optional.empty(), Optional.empty(),
 				Optional.empty(), Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", prop.value);
@@ -87,7 +88,7 @@ class TestIRODSUsers {
 
 	@Test
 	void testRetrieveAllUsersInASpecificGroup() throws IOException, IRODSException {
-		var users = IRODSUsers.users(comm, new Group("public"));
+		List<User> users = IRODSUsers.users(comm, new Group("public"));
 		users.forEach(u -> log.debug("user = {}#{}", u.name, u.zone));
 		assertNotNull(users);
 		assertFalse(users.isEmpty());
@@ -96,18 +97,18 @@ class TestIRODSUsers {
 
 	@Test
 	void testRetrieveAllGroupsContainingASpecificUser() throws IOException, IRODSException {
-		var groups = Arrays.asList(new Group("irods4j_testgroup0"), new Group("irods4j_testgroup1"),
+		List<Group> groups = Arrays.asList(new Group("irods4j_testgroup0"), new Group("irods4j_testgroup1"),
 				new Group("irods4j_testgroup2"));
 
 		try {
 			assertDoesNotThrow(() -> {
-				for (var g : groups) {
+				for (Group g : groups) {
 					IRODSUsers.addGroup(comm, g);
 					IRODSUsers.addUserToGroup(comm, g, rodsuser);
 				}
 			});
 
-			var groupsContainingMember = IRODSUsers.groups(comm, rodsuser);
+			List<Group> groupsContainingMember = IRODSUsers.groups(comm, rodsuser);
 			groupsContainingMember.forEach(g -> log.debug("group = {}", g.name));
 
 			assertNotNull(groupsContainingMember);
@@ -116,7 +117,7 @@ class TestIRODSUsers {
 			assertTrue(groupsContainingMember.stream().allMatch(g -> "public".equals(g.name) || groups.contains(g)));
 		} finally {
 			assertDoesNotThrow(() -> {
-				for (var g : groups) {
+				for (Group g : groups) {
 					IRODSUsers.removeGroup(comm, g);
 				}
 			});

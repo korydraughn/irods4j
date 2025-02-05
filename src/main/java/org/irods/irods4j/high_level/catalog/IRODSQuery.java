@@ -18,13 +18,7 @@ import org.irods.irods4j.low_level.api.IRODSErrorCodes;
 import org.irods.irods4j.low_level.api.IRODSException;
 import org.irods.irods4j.low_level.api.IRODSKeywords;
 import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
-import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryInp_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.GenQueryOut_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.Genquery2Input_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.InxIvalPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.InxValPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.SpecificQueryInp_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -189,7 +183,7 @@ public class IRODSQuery {
 			++input.InxIvalPair_PI.iiLen;
 			input.InxIvalPair_PI.inx.add(columnId);
 
-			var opt = 0;
+			int opt = 0;
 			switch (sortOption) {
 			case NONE:
 				break;
@@ -228,7 +222,7 @@ public class IRODSQuery {
 			++input.InxIvalPair_PI.iiLen;
 			input.InxIvalPair_PI.inx.add(columnId);
 
-			var opt = 0;
+			int opt = 0;
 			switch (aggFn) {
 			case NONE:
 				break;
@@ -328,12 +322,12 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.column_mappings = 1;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
@@ -366,13 +360,13 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("Query string is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = query;
 		input.sql_only = 1;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
@@ -405,12 +399,12 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("Query string is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = query;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
@@ -449,13 +443,13 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("Query string is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = query;
 		input.zone = zone;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
@@ -490,11 +484,11 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("Query arguments is null");
 		}
 
-		var input = queryArgs.getGenQueryInp_PI();
-		var output = new Reference<GenQueryOut_PI>();
+		GenQueryInp_PI input = queryArgs.getGenQueryInp_PI();
+		Reference<GenQueryOut_PI> output = new Reference<GenQueryOut_PI>();
 
 		while (true) {
-			var ec = IRODSApi.rcGenQuery(comm, input, output);
+			int ec = IRODSApi.rcGenQuery(comm, input, output);
 			if (ec < 0) {
 				if (IRODSErrorCodes.CAT_NO_ROWS_FOUND == ec) {
 					break;
@@ -502,12 +496,12 @@ public class IRODSQuery {
 				throw new IRODSException(ec, "rcGenQuery error");
 			}
 
-			var row = new ArrayList<String>();
-			for (var r = 0; r < output.value.rowCnt; ++r) {
-				for (var c = 0; c < output.value.attriCnt; ++c) {
+			ArrayList<String> row = new ArrayList<String>();
+			for (int r = 0; r < output.value.rowCnt; ++r) {
+				for (int c = 0; c < output.value.attriCnt; ++c) {
 					// Get an attribute list. Each SqlResult_PI represents a column containing one
 					// piece of of information for each row.
-					var sqlResult = output.value.SqlResult_PI.get(c);
+					SqlResult_PI sqlResult = output.value.SqlResult_PI.get(c);
 					row.add(sqlResult.value.get(r));
 				}
 
@@ -595,7 +589,7 @@ public class IRODSQuery {
 			throw new IllegalArgumentException("Max number of bind arguments is greater than 10");
 		}
 
-		var input = new SpecificQueryInp_PI();
+		SpecificQueryInp_PI input = new SpecificQueryInp_PI();
 		input.sql = specificQueryName;
 		input.maxRows = GenQuery1Limits.MAX_SQL_ROWS;
 
@@ -647,10 +641,10 @@ public class IRODSQuery {
 			}
 		}
 
-		var output = new Reference<GenQueryOut_PI>();
+		Reference<GenQueryOut_PI> output = new Reference<GenQueryOut_PI>();
 
 		while (true) {
-			var ec = IRODSApi.rcSpecificQuery(comm, input, output);
+			int ec = IRODSApi.rcSpecificQuery(comm, input, output);
 			if (ec < 0) {
 				if (IRODSErrorCodes.CAT_NO_ROWS_FOUND == ec) {
 					break;
@@ -658,12 +652,12 @@ public class IRODSQuery {
 				throw new IRODSException(ec, "rcGenQuery2 error");
 			}
 
-			var row = new ArrayList<String>();
-			for (var r = 0; r < output.value.rowCnt; ++r) {
-				for (var c = 0; c < output.value.attriCnt; ++c) {
+			ArrayList<String> row = new ArrayList<String>();
+			for (int r = 0; r < output.value.rowCnt; ++r) {
+				for (int c = 0; c < output.value.attriCnt; ++c) {
 					// Get an attribute list. Each SqlResult_PI represents a column containing one
 					// piece of of information for each row.
-					var sqlResult = output.value.SqlResult_PI.get(c);
+					SqlResult_PI sqlResult = output.value.SqlResult_PI.get(c);
 					row.add(sqlResult.value.get(r));
 				}
 

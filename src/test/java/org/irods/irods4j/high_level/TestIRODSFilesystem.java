@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.logging.log4j.LogManager;
@@ -16,6 +17,7 @@ import org.irods.irods4j.high_level.connection.QualifiedUsername;
 import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
 import org.irods.irods4j.high_level.vfs.IRODSFilesystem;
 import org.irods.irods4j.high_level.vfs.IRODSFilesystem.RemoveOptions;
+import org.irods.irods4j.high_level.vfs.ObjectStatus;
 import org.irods.irods4j.high_level.vfs.Permission;
 import org.irods.irods4j.low_level.api.IRODSException;
 import org.irods.irods4j.low_level.protocol.packing_instructions.DataObjInp_PI.OpenFlags;
@@ -54,14 +56,14 @@ class TestIRODSFilesystem {
 
 	@Test
 	void testCreateAndDeleteCollection() throws Exception {
-		var collection = Paths.get("/", zone, "home", username, "testCreateAndDeleteCollection").toString();
+		String collection = Paths.get("/", zone, "home", username, "testCreateAndDeleteCollection").toString();
 		assertTrue(IRODSFilesystem.createCollection(conn.getRcComm(), collection));
 		assertTrue(IRODSFilesystem.remove(conn.getRcComm(), collection, RemoveOptions.NO_TRASH));
 	}
 
 	@Test
 	void testModifyingTheInheritanceFlagOfACollection() throws IOException, IRODSException {
-		var collection = Paths.get("/", zone, "home", username, "testModifyingTheInheritanceFlagOfACollection")
+		String collection = Paths.get("/", zone, "home", username, "testModifyingTheInheritanceFlagOfACollection")
 				.toString();
 
 		try {
@@ -69,7 +71,7 @@ class TestIRODSFilesystem {
 			assertTrue(IRODSFilesystem.createCollection(conn.getRcComm(), collection));
 
 			// Show that inheritance is NOT enabled on the new collection.
-			var status = IRODSFilesystem.status(conn.getRcComm(), collection);
+			ObjectStatus status = IRODSFilesystem.status(conn.getRcComm(), collection);
 			assertFalse(status.isInheritanceEnabled());
 
 			// Enable inheritance on the collection and show that it is indeed enabled.
@@ -88,7 +90,7 @@ class TestIRODSFilesystem {
 
 	@Test
 	void testRenameACollection() throws IOException, IRODSException {
-		var collection = Paths.get("/", zone, "home", username, "testRenameACollection").toString();
+		String collection = Paths.get("/", zone, "home", username, "testRenameACollection").toString();
 		String collToRemove = collection;
 
 		try {
@@ -96,7 +98,7 @@ class TestIRODSFilesystem {
 			assertTrue(IRODSFilesystem.createCollection(conn.getRcComm(), collection));
 
 			// Rename the collection.
-			var newCollName = collection + ".renamed";
+			String newCollName = collection + ".renamed";
 			IRODSFilesystem.rename(conn.getRcComm(), collection, newCollName);
 
 			// Update the path so that the test can clean up. It's important that this
@@ -117,25 +119,25 @@ class TestIRODSFilesystem {
 
 	@Test
 	void testCopyADataObjectUsingCopyDataObjectFunction() throws Exception {
-		var sandbox = Paths.get("/", zone, "home", username, "testCopyADataObjectUsingCopyDataObjectFunction");
+		Path sandbox = Paths.get("/", zone, "home", username, "testCopyADataObjectUsingCopyDataObjectFunction");
 
 		try {
 			assertTrue(IRODSFilesystem.createCollection(conn.getRcComm(), sandbox.toString()));
 
 			// Create a data object.
-			var from = sandbox.resolve("data_object1");
-			try (var stream = new IRODSDataObjectStream()) {
+			Path from = sandbox.resolve("data_object1");
+			try (IRODSDataObjectStream stream = new IRODSDataObjectStream()) {
 				stream.open(conn.getRcComm(), from.toString(), OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 			}
-			var fromStatus = IRODSFilesystem.status(conn.getRcComm(), from.toString());
+			ObjectStatus fromStatus = IRODSFilesystem.status(conn.getRcComm(), from.toString());
 			assertTrue(IRODSFilesystem.exists(fromStatus));
 			assertTrue(IRODSFilesystem.isDataObject(fromStatus));
 
 			// Copy the data object and show that it exists.
-			var to = sandbox.resolve("data_object2");
+			Path to = sandbox.resolve("data_object2");
 			assertTrue(IRODSFilesystem.copyDataObject(conn.getRcComm(), from.toString(), to.toString()));
 
-			var toStatus = IRODSFilesystem.status(conn.getRcComm(), to.toString());
+			ObjectStatus toStatus = IRODSFilesystem.status(conn.getRcComm(), to.toString());
 			assertTrue(IRODSFilesystem.exists(toStatus));
 			assertTrue(IRODSFilesystem.isDataObject(toStatus));
 		} finally {
@@ -145,15 +147,15 @@ class TestIRODSFilesystem {
 
 	@Test
 	void testListPermissionsOnDataObject() throws Exception {
-		var path = Paths.get("/", zone, "home", username, "testListPermissionsOnDataObject").toString();
+		String path = Paths.get("/", zone, "home", username, "testListPermissionsOnDataObject").toString();
 
 		// Create a new data object.
-		try (var out = new IRODSDataObjectStream()) {
+		try (IRODSDataObjectStream out = new IRODSDataObjectStream()) {
 			out.open(conn.getRcComm(), path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 		}
 
 		// Get the permissions on the data object.
-		var status = IRODSFilesystem.status(conn.getRcComm(), path);
+		ObjectStatus status = IRODSFilesystem.status(conn.getRcComm(), path);
 		status.getPermissions().forEach(p -> {
 			log.debug("[name={}, zone={}, permission={}, type={}]", p.getName(), p.getZone(), p.getPermission(),
 					p.getUserType());

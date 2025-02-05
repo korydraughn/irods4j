@@ -1,9 +1,11 @@
 package org.irods.irods4j.high_level.vfs;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.irods.irods4j.common.JsonUtil;
 import org.irods.irods4j.common.Reference;
@@ -63,12 +65,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_SIZE where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
+		String query = "select DATA_SIZE where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -96,12 +98,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Leaf resource is null or empty");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_SIZE where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
+		String query = "select DATA_SIZE where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -161,7 +163,7 @@ public class IRODSReplicas {
 		throwIfLessThanLowerBound(srcReplicaNumber, 0, "Source replica number is less than 0");
 		throwIfNullOrEmpty(dstResourceName, "Destination resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -179,9 +181,9 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.DEST_RESC_NAME);
 		input.KeyValPair_PI.svalue.add(dstResourceName);
 
-		var output = new Reference<TransferStat_PI>();
+		Reference<TransferStat_PI> output = new Reference<TransferStat_PI>();
 
-		var ec = IRODSApi.rcDataObjRepl(comm, input, output);
+		int ec = IRODSApi.rcDataObjRepl(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjRepl error");
 		}
@@ -209,7 +211,7 @@ public class IRODSReplicas {
 		throwIfLessThanLowerBound(srcReplicaNumber, 0, "Source replica number is less than 0");
 		throwIfNullOrEmpty(dstResourceName, "Destination resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -223,9 +225,9 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.DEST_RESC_NAME);
 		input.KeyValPair_PI.svalue.add(dstResourceName);
 
-		var output = new Reference<TransferStat_PI>();
+		Reference<TransferStat_PI> output = new Reference<TransferStat_PI>();
 
-		var ec = IRODSApi.rcDataObjRepl(comm, input, output);
+		int ec = IRODSApi.rcDataObjRepl(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjRepl error");
 		}
@@ -252,7 +254,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(srcResourceName, "Source resource is null or empty");
 		throwIfNullOrEmpty(dstResourceName, "Destination resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -270,9 +272,9 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.DEST_RESC_NAME);
 		input.KeyValPair_PI.svalue.add(dstResourceName);
 
-		var output = new Reference<TransferStat_PI>();
+		Reference<TransferStat_PI> output = new Reference<TransferStat_PI>();
 
-		var ec = IRODSApi.rcDataObjRepl(comm, input, output);
+		int ec = IRODSApi.rcDataObjRepl(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjRepl error");
 		}
@@ -299,7 +301,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(srcResourceName, "Source resource is null or empty");
 		throwIfNullOrEmpty(dstResourceName, "Destination resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -313,9 +315,9 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.DEST_RESC_NAME);
 		input.KeyValPair_PI.svalue.add(dstResourceName);
 
-		var output = new Reference<TransferStat_PI>();
+		Reference<TransferStat_PI> output = new Reference<TransferStat_PI>();
 
-		var ec = IRODSApi.rcDataObjRepl(comm, input, output);
+		int ec = IRODSApi.rcDataObjRepl(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjRepl error");
 		}
@@ -340,7 +342,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -358,7 +360,7 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.COPIES);
 		input.KeyValPair_PI.svalue.add("1");
 
-		var ec = IRODSApi.rcDataObjTrim(comm, input);
+		int ec = IRODSApi.rcDataObjTrim(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjTrim error");
 		}
@@ -383,7 +385,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -397,7 +399,7 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.COPIES);
 		input.KeyValPair_PI.svalue.add("1");
 
-		var ec = IRODSApi.rcDataObjTrim(comm, input);
+		int ec = IRODSApi.rcDataObjTrim(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjTrim error");
 		}
@@ -422,7 +424,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -440,7 +442,7 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.COPIES);
 		input.KeyValPair_PI.svalue.add("1");
 
-		var ec = IRODSApi.rcDataObjTrim(comm, input);
+		int ec = IRODSApi.rcDataObjTrim(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjTrim error");
 		}
@@ -465,7 +467,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -479,7 +481,7 @@ public class IRODSReplicas {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.COPIES);
 		input.KeyValPair_PI.svalue.add("1");
 
-		var ec = IRODSApi.rcDataObjTrim(comm, input);
+		int ec = IRODSApi.rcDataObjTrim(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjTrim error");
 		}
@@ -509,7 +511,7 @@ public class IRODSReplicas {
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 		throwIfNull(calculation, "Checksum verification calculation is null");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -529,9 +531,9 @@ public class IRODSReplicas {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
+		int ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjChksum error");
 		}
@@ -563,7 +565,7 @@ public class IRODSReplicas {
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 		throwIfNull(calculation, "Checksum verification calculation is null");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -579,9 +581,9 @@ public class IRODSReplicas {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
+		int ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjChksum error");
 		}
@@ -613,7 +615,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(leafResourceName, "Destination resource is null or empty");
 		throwIfNull(calculation, "Checksum verification calculation is null");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -633,9 +635,9 @@ public class IRODSReplicas {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
+		int ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjChksum error");
 		}
@@ -667,7 +669,7 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(leafResourceName, "Destination resource is null or empty");
 		throwIfNull(calculation, "Checksum verification calculation is null");
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.keyWord = new ArrayList<>();
@@ -683,9 +685,9 @@ public class IRODSReplicas {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcDataObjChksum(comm, input, output);
+		int ec = IRODSApi.rcDataObjChksum(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjChksum error");
 		}
@@ -714,12 +716,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
+		String query = "select DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -748,12 +750,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
+		String query = "select DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -783,17 +785,17 @@ public class IRODSReplicas {
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 		throwIfLessThanLowerBound(newTime, 0, "Modification time is less than 0");
 
-		var input = new HashMap<String, Object>();
+		HashMap<String, Object> input = new HashMap<String, Object>();
 		input.put("logical_path", logicalPath);
 
-		var options = new HashMap<String, Object>();
+		HashMap<String, Object> options = new HashMap<String, Object>();
 		input.put("options", options);
 
 		options.put("no_create", true); // Do not create new data objects!
 		options.put("replica_number", replicaNumber);
 		options.put("seconds_since_epoch", newTime);
 
-		var ec = IRODSApi.rcTouch(comm, JsonUtil.toJsonString(input));
+		int ec = IRODSApi.rcTouch(comm, JsonUtil.toJsonString(input));
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcTouch error");
 		}
@@ -821,17 +823,17 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 		throwIfLessThanLowerBound(newTime, 0, "Modification time is less than 0");
 
-		var input = new HashMap<String, Object>();
+		HashMap<String, Object> input = new HashMap<String, Object>();
 		input.put("logical_path", logicalPath);
 
-		var options = new HashMap<String, Object>();
+		HashMap<String, Object> options = new HashMap<String, Object>();
 		input.put("options", options);
 
 		options.put("no_create", true); // Do not create new data objects!
 		options.put("leaf_resource_name", leafResourceName);
 		options.put("seconds_since_epoch", newTime);
 
-		var ec = IRODSApi.rcTouch(comm, JsonUtil.toJsonString(input));
+		int ec = IRODSApi.rcTouch(comm, JsonUtil.toJsonString(input));
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcTouch error");
 		}
@@ -858,12 +860,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_REPL_NUM where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
+		String query = "select DATA_REPL_NUM where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -892,12 +894,12 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select RESC_NAME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
-		var rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
+		String query = "select RESC_NAME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber));
 		if (!rows.isEmpty()) {
 			throw new IllegalStateException("Replica does not exist");
 		}
@@ -926,11 +928,11 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfLessThanLowerBound(replicaNumber, 0, "Replica number is less than 0");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
+		String query = "select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_NUM = '%d'";
 		return !IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, replicaNumber)).isEmpty();
 	}
 
@@ -955,11 +957,11 @@ public class IRODSReplicas {
 		throwIfNullOrEmpty(logicalPath, "Path is null or empty");
 		throwIfNullOrEmpty(leafResourceName, "Resource is null or empty");
 
-		var p = Paths.get(logicalPath);
-		var collName = p.getParent().toString();
-		var dataName = p.getFileName().toString();
+		Path p = Paths.get(logicalPath);
+		String collName = p.getParent().toString();
+		String dataName = p.getFileName().toString();
 
-		var query = "select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
+		String query = "select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s' and RESC_NAME = '%s'";
 		return !IRODSQuery.executeGenQuery2(comm, String.format(query, collName, dataName, leafResourceName)).isEmpty();
 	}
 

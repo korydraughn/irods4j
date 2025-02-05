@@ -156,7 +156,7 @@ public class IRODSDataObjectOutputStream extends OutputStream {
 	public void open(RcComm comm, String logicalPath, boolean truncate, boolean append)
 			throws IOException, IRODSException {
 		initInternalBufferIfNecessary();
-		var mode = (truncate ? OpenFlags.O_TRUNC : 0);
+		int mode = (truncate ? OpenFlags.O_TRUNC : 0);
 		mode |= (append ? OpenFlags.O_APPEND : 0);
 		in.open(comm, logicalPath, OpenFlags.O_CREAT | OpenFlags.O_WRONLY | mode);
 		position = 0;
@@ -181,7 +181,7 @@ public class IRODSDataObjectOutputStream extends OutputStream {
 	public void open(RcComm comm, String logicalPath, String rootResourceName, boolean truncate, boolean append)
 			throws IOException, IRODSException {
 		initInternalBufferIfNecessary();
-		var mode = (truncate ? OpenFlags.O_TRUNC : 0);
+		int mode = (truncate ? OpenFlags.O_TRUNC : 0);
 		mode |= (append ? OpenFlags.O_APPEND : 0);
 		in.open(comm, logicalPath, rootResourceName, OpenFlags.O_CREAT | OpenFlags.O_WRONLY | mode);
 		position = 0;
@@ -206,7 +206,7 @@ public class IRODSDataObjectOutputStream extends OutputStream {
 	public void open(RcComm comm, String logicalPath, long replicaNumber, boolean truncate, boolean append)
 			throws IOException, IRODSException {
 		initInternalBufferIfNecessary();
-		var mode = (truncate ? OpenFlags.O_TRUNC : 0);
+		int mode = (truncate ? OpenFlags.O_TRUNC : 0);
 		mode |= (append ? OpenFlags.O_APPEND : 0);
 		in.open(comm, logicalPath, replicaNumber, OpenFlags.O_WRONLY | mode);
 		position = 0;
@@ -232,7 +232,7 @@ public class IRODSDataObjectOutputStream extends OutputStream {
 	public void open(RcComm comm, String replicaToken, String logicalPath, long replicaNumber, boolean truncate,
 			boolean append) throws IOException, IRODSException {
 		initInternalBufferIfNecessary();
-		var mode = (truncate ? OpenFlags.O_TRUNC : 0);
+		int mode = (truncate ? OpenFlags.O_TRUNC : 0);
 		mode |= (append ? OpenFlags.O_APPEND : 0);
 		in.open(comm, replicaToken, logicalPath, replicaNumber, OpenFlags.O_WRONLY | mode);
 		position = 0;
@@ -309,12 +309,12 @@ public class IRODSDataObjectOutputStream extends OutputStream {
 		}
 
 		// TODO This is the correct way to flush the buffer.
-//        var remaining = position;
-//        while (remaining > 0) {
-//            // The write() will throw an exception if there's an error.
-//            var bytesWritten = in.write(buffer, remaining);
-//            remaining -= bytesWritten;
-//        }
+//		var remaining = position;
+//		while (remaining > 0) {
+//			// The write() will throw an exception if there's an error.
+//			var bytesWritten = in.write(buffer, remaining);
+//			remaining -= bytesWritten;
+//		}
 
 		// TODO While it's possible for the write() to write a subset of the bytes, no
 		// one has ever reported that happening. So for now, this is good enough. Open

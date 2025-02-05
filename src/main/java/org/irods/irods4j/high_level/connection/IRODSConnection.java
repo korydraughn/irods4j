@@ -183,7 +183,7 @@ public class IRODSConnection implements AutoCloseable {
 	 * @since 0.1.0
 	 */
 	public RcComm release() {
-		var connection = getRcComm();
+		RcComm connection = getRcComm();
 		comm = null;
 		return connection;
 	}
@@ -255,8 +255,8 @@ public class IRODSConnection implements AutoCloseable {
 			proxyUserZone = Optional.of(proxyUser.getZone());
 		}
 
-		var options = Optional.of(connOptions);
-		var errInfo = Optional.of(new RErrMsg_PI());
+		Optional<ConnectionOptions> options = Optional.of(connOptions);
+		Optional<RErrMsg_PI> errInfo = Optional.of(new RErrMsg_PI());
 
 		comm = IRODSApi.rcConnect(host, port, clientUser.getName(), clientUser.getZone(), proxyUserName, proxyUserZone,
 				options, errInfo);

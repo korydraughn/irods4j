@@ -26,7 +26,7 @@ public class NativeAuthPlugin extends AuthPlugin {
 
 	@Override
 	public JsonNode authClientStart(RcComm comm, JsonNode context) {
-		var resp = (ObjectNode) context.deepCopy();
+		ObjectNode resp = (ObjectNode) context.deepCopy();
 		resp.put(AUTH_NEXT_OPERATION, AUTH_CLIENT_AUTH_REQUEST);
 
 		// The proxy user's information is used for authentication because it covers
@@ -38,19 +38,19 @@ public class NativeAuthPlugin extends AuthPlugin {
 	}
 
 	private JsonNode establishContext(RcComm comm, JsonNode context) throws NoSuchAlgorithmException {
-		var resp = (ObjectNode) context.deepCopy();
+		ObjectNode resp = (ObjectNode) context.deepCopy();
 
-		var requestResult = ((ObjectNode) context).get("request_result").asText();
-		var requestResultSb = new StringBuilder();
+		String requestResult = ((ObjectNode) context).get("request_result").asText();
+		StringBuilder requestResultSb = new StringBuilder();
 		requestResultSb.append(requestResult);
 
 		// Equivalent to std::string::resize.
 		// Pads the end of the content with \u0000.
-		final var CHALLENGE_LEN = 64;
+		final int CHALLENGE_LEN = 64;
 		requestResultSb.setLength(CHALLENGE_LEN);
 		log.debug("requestResultSb string = [{}]", requestResultSb.toString());
 
-		var md5BufSb = new StringBuilder();
+		StringBuilder md5BufSb = new StringBuilder();
 		// [64+1] is the challenge string received by the server.
 		// The "+1" is space for the null byte.
 		md5BufSb.append(requestResultSb);
@@ -64,8 +64,8 @@ public class NativeAuthPlugin extends AuthPlugin {
 		// If the anonymous user account is being used, ignore the password.
 		// See plugins/auth/src/native.cpp for details.
 		if (!"anonymous".equals(context.get("user_name").asText())) {
-			final var MAX_PASSWORD_LEN = 50;
-			var passwordSb = new StringBuilder();
+			final int MAX_PASSWORD_LEN = 50;
+			StringBuilder passwordSb = new StringBuilder();
 			// TODO Enforce the max password length. We need to open an issue for this.
 			// The user could enter a long password which gets truncated!
 			passwordSb.append(context.get("password").asText());
@@ -77,15 +77,15 @@ public class NativeAuthPlugin extends AuthPlugin {
 			log.debug("MD5 string = [{}]", md5BufSb.toString());
 		}
 
-		var hasher = MessageDigest.getInstance("md5");
+		MessageDigest hasher = MessageDigest.getInstance("md5");
 		hasher.update(md5BufSb.toString().getBytes(StandardCharsets.UTF_8));
 
 		// Make sure the byte sequence doesn't end early.
 		// Scrub out any errant terminating characters by incrementing
 		// their value by 1.
-		final var RESPONSE_LEN = 16;
-		var digest = hasher.digest();
-		for (var i = 0; i < RESPONSE_LEN; ++i) {
+		final int RESPONSE_LEN = 16;
+		byte[] digest = hasher.digest();
+		for (int i = 0; i < RESPONSE_LEN; ++i) {
 			if (0 == digest[i]) {
 				++digest[i];
 			}
@@ -101,10 +101,10 @@ public class NativeAuthPlugin extends AuthPlugin {
 	}
 
 	private JsonNode clientRequest(RcComm comm, JsonNode context) throws IOException, IRODSException {
-		var req = (ObjectNode) context.deepCopy();
+		ObjectNode req = (ObjectNode) context.deepCopy();
 		req.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_REQUEST);
 
-		var resp = request(comm, req);
+		JsonNode resp = request(comm, req);
 		((ObjectNode) resp).put(AUTH_NEXT_OPERATION, AUTH_ESTABLISH_CONTEXT);
 
 		return resp;
@@ -115,9 +115,9 @@ public class NativeAuthPlugin extends AuthPlugin {
 			throw new IllegalStateException("Missing digest, user_name, and/or zone_name");
 		}
 
-		var req = (ObjectNode) context.deepCopy();
+		ObjectNode req = (ObjectNode) context.deepCopy();
 		req.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
-		var resp = request(comm, req);
+		JsonNode resp = request(comm, req);
 
 		comm.loggedIn = true;
 		((ObjectNode) resp).put(AUTH_NEXT_OPERATION, AUTH_FLOW_COMPLETE);
@@ -126,14 +126,14 @@ public class NativeAuthPlugin extends AuthPlugin {
 	}
 
 	private static String generateSessionSignature(String buffer) {
-		final var requiredSize = 16;
+		final int requiredSize = 16;
 
 		if (buffer.length() < requiredSize) {
 			throw new IllegalArgumentException("Buffer must be at least 16 bytes long");
 		}
 
-		var sigSb = new StringBuilder();
-		for (var ch : buffer.getBytes(StandardCharsets.UTF_8)) {
+		StringBuilder sigSb = new StringBuilder();
+		for (byte ch : buffer.getBytes(StandardCharsets.UTF_8)) {
 			sigSb.append(String.format("%02x", ch));
 		}
 

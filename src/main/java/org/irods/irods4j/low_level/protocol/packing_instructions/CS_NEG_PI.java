@@ -13,7 +13,7 @@ public class CS_NEG_PI {
 	public String result = RESULT_CS_NEG_REFUSE;
 	
 	public static void main(String[] args) throws JsonProcessingException {
-		var m = new XmlMapper();
+		XmlMapper m = new XmlMapper();
 		System.out.println(m.writeValueAsString(new CS_NEG_PI()));
 	}
 

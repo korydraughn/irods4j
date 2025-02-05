@@ -17,13 +17,13 @@ public class XmlUtil {
 	private static XmlMapper xm = new XmlMapper();
 
 	static {
-		var provider = new XmlSerializerProvider(new XmlRootNameLookup());
+		XmlSerializerProvider provider = new XmlSerializerProvider(new XmlRootNameLookup());
 		provider.setNullValueSerializer(new NullSerializer());
 		xm.setSerializerProvider(provider);
 	}
 
 	public static XmlMapper setXmlMapper(XmlMapper other) {
-		var old = xm;
+		XmlMapper old = xm;
 		xm = other;
 		return old;
 	}

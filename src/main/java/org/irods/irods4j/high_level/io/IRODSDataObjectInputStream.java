@@ -220,7 +220,7 @@ public class IRODSDataObjectInputStream extends InputStream {
 		// If we've read all the contents of the buffer, fill it with new data.
 		if (bytesInBuffer == position) {
 			try {
-				var bytesRead = in.read(byteArrRef, buffer.length);
+				int bytesRead = in.read(byteArrRef, buffer.length);
 				if (0 == bytesRead) {
 					return -1;
 				}

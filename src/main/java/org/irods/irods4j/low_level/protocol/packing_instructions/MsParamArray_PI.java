@@ -16,7 +16,7 @@ public class MsParamArray_PI {
 	public List<MsParam_PI> MsParam_PI;
 
 	public static void main(String[] args) throws JsonProcessingException {
-		var m = new XmlMapper();
+		XmlMapper m = new XmlMapper();
 		System.out.println(m.writeValueAsString(new MsParamArray_PI()));
 	}
 

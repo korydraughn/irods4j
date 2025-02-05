@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
@@ -53,7 +55,7 @@ class TestIRODSRules {
 
 	@Test
 	void testIRODSRulesReturnsAvailableRuleEnginePluginInstances() throws Exception {
-		var repInstances = IRODSRules.getAvailableRuleEnginePluginInstances(conn.getRcComm());
+		List<String> repInstances = IRODSRules.getAvailableRuleEnginePluginInstances(conn.getRcComm());
 		assertNotNull(repInstances);
 		assertFalse(repInstances.isEmpty());
 		log.debug("Rule engine plugin instances = {}", repInstances);
@@ -61,14 +63,14 @@ class TestIRODSRules {
 
 	@Test
 	void testExecuteRuleReturnsStdoutStderrWhenOutputArgumentIsRuleExecOut() throws Exception {
-		var ruleArgs = new RuleArguments();
-		var msg = "hello, irods4j!";
+		RuleArguments ruleArgs = new RuleArguments();
+		String msg = "hello, irods4j!";
 		ruleArgs.ruleText = String.format("writeLine('stdout', '%s')", msg);
 		ruleArgs.input = Optional.empty();
 		ruleArgs.output = Optional.of(Arrays.asList("ruleExecOut"));
 		ruleArgs.ruleEnginePluginInstance = Optional.of("irods_rule_engine_plugin-irods_rule_language-instance");
 
-		var results = IRODSRules.executeRule(conn.getRcComm(), ruleArgs);
+		Map<String, String> results = IRODSRules.executeRule(conn.getRcComm(), ruleArgs);
 		assertNotNull(results);
 		assertFalse(results.isEmpty());
 		assertEquals(results.get("stdout"), msg);
@@ -77,15 +79,15 @@ class TestIRODSRules {
 
 	@Test
 	void testExecuteRuleReturnsVariablesRequestedByTheUser() throws Exception {
-		var ruleArgs = new RuleArguments();
-		var name = "irods4j";
-		var role = "Java client library for iRODS";
+		RuleArguments ruleArgs = new RuleArguments();
+		String name = "irods4j";
+		String role = "Java client library for iRODS";
 		ruleArgs.ruleText = String.format("*name = '%s'; *role = '%s'", name, role);
 		ruleArgs.input = Optional.empty();
 		ruleArgs.output = Optional.of(Arrays.asList("*name", "*role"));
 		ruleArgs.ruleEnginePluginInstance = Optional.of("irods_rule_engine_plugin-irods_rule_language-instance");
 
-		var results = IRODSRules.executeRule(conn.getRcComm(), ruleArgs);
+		Map<String, String> results = IRODSRules.executeRule(conn.getRcComm(), ruleArgs);
 		assertNotNull(results);
 		assertFalse(results.isEmpty());
 		assertEquals(results.get("*name"), name);

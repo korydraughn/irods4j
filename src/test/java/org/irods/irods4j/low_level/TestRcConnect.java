@@ -16,12 +16,12 @@ class TestRcConnect {
 
 	@Test
 	void testConnectAndDisconnect() {
-		final var host = "localhost";
-		final var port = 1247;
-		final var zone = "tempZone";
-		final var username = "rods";
+		final String host = "localhost";
+		final int port = 1247;
+		final String zone = "tempZone";
+		final String username = "rods";
 
-		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, Optional.empty(),
+		IRODSApi.RcComm comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, Optional.empty(),
 				Optional.empty(), Optional.empty(), Optional.empty()));
 		assertNotNull(comm);
 		assertDoesNotThrow(() -> IRODSApi.rcDisconnect(comm));
@@ -32,15 +32,15 @@ class TestRcConnect {
 		assumeTrue(false, "Need to investigate how to trigger this case");
 
 		// TODO Figure out how to trigger an error that gets captured by rcConnect.
-		final var host = "localhost";
-		final var port = 1247;
+		final String host = "localhost";
+		final int port = 1247;
 //		final var zone = "tempZone";
 //		final var username = "bogus";
-		final var zone = "x";
-		final var username = "x";
+		final String zone = "x";
+		final String username = "x";
 
-		var errInfo = new RErrMsg_PI();
-		var comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, Optional.empty(),
+		RErrMsg_PI errInfo = new RErrMsg_PI();
+		IRODSApi.RcComm comm = assertDoesNotThrow(() -> IRODSApi.rcConnect(host, port, username, zone, Optional.empty(),
 				Optional.empty(), Optional.empty(), Optional.of(errInfo)));
 		assertNull(comm);
 		assertTrue(errInfo.status < 0);

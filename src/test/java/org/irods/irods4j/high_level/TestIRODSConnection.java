@@ -52,14 +52,14 @@ class TestIRODSConnection {
 	@Test
 	void testConnectAuthenticateAndDisconnect() throws Exception {
 		@SuppressWarnings("resource")
-		var conn = new IRODSConnection();
+		IRODSConnection conn = new IRODSConnection();
 		conn.connect(host, port, new QualifiedUsername(username, zone));
 		conn.authenticate("native", password);
 		conn.disconnect();
 	}
 
 	static IRODSConnection connectUsingTryWithResources() throws Exception {
-		try (var conn = new IRODSConnection()) {
+		try (IRODSConnection conn = new IRODSConnection()) {
 			conn.connect(host, port, new QualifiedUsername(username, zone));
 			conn.authenticate("native", password);
 			return conn;
@@ -68,7 +68,7 @@ class TestIRODSConnection {
 
 	@Test
 	void testAutoDisconnect() throws Exception {
-		var conn = connectUsingTryWithResources();
+		IRODSConnection conn = connectUsingTryWithResources();
 		assertNotNull(conn);
 		assertFalse(conn.isConnected());
 		assertThrows(IllegalStateException.class, () -> conn.getRcComm());
@@ -76,7 +76,7 @@ class TestIRODSConnection {
 
 	@Test
 	void testReconnectionUsingExistingState() throws Exception {
-		try (var conn = new IRODSConnection()) {
+		try (IRODSConnection conn = new IRODSConnection()) {
 			conn.connect(host, port, new QualifiedUsername(username, zone));
 			conn.disconnect();
 			assertFalse(conn.isConnected());
@@ -88,20 +88,20 @@ class TestIRODSConnection {
 
 	@Test
 	void testConnectingViaAProxyUser() throws Exception {
-		try (var adminConn = new IRODSConnection()) {
+		try (IRODSConnection adminConn = new IRODSConnection()) {
 			adminConn.connect(host, port, new QualifiedUsername(username, zone));
 			adminConn.authenticate("native", password);
 			assertTrue(adminConn.isConnected());
 
 			// Create a new user. We don't need to set a password for the user because we
 			// are authenticating as the admin on behalf of the user.
-			var testUser = new User("testuser", Optional.of(zone));
+			User testUser = new User("testuser", Optional.of(zone));
 			IRODSUsers.addUser(adminConn.getRcComm(), testUser, UserType.RODSUSER, ZoneType.LOCAL);
 
-			try (var conn = new IRODSConnection()) {
+			try (IRODSConnection conn = new IRODSConnection()) {
 				// Create the proxied connection.
-				var proxyUser = new QualifiedUsername(username, zone);
-				var clientUser = new QualifiedUsername(testUser.name, testUser.zone);
+				QualifiedUsername proxyUser = new QualifiedUsername(username, zone);
+				QualifiedUsername clientUser = new QualifiedUsername(testUser.name, testUser.zone);
 				conn.connect(host, port, proxyUser, clientUser);
 				conn.authenticate("native", password);
 				assertTrue(conn.isConnected());
@@ -112,10 +112,10 @@ class TestIRODSConnection {
 				//
 				// Stat the admin's home collection. This will fail due to the test user not
 				// having permission to see the target collection.
-				var input = new DataObjInp_PI();
+				DataObjInp_PI input = new DataObjInp_PI();
 				input.objPath = Paths.get("/", zone, "home", username).toString();
-				var output = new Reference<RodsObjStat_PI>();
-				var ec = IRODSApi.rcObjStat(conn.getRcComm(), input, output);
+				Reference<RodsObjStat_PI> output = new Reference<RodsObjStat_PI>();
+				int ec = IRODSApi.rcObjStat(conn.getRcComm(), input, output);
 				log.debug("rcObjStat ec = {}", ec); // TODO Remove this.
 				assertEquals(ec, 2);
 

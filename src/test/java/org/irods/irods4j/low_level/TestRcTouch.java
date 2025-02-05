@@ -43,27 +43,27 @@ class TestRcTouch {
 
 	@Test
 	void testRcTouch() throws IOException {
-		var logicalPath = Paths.get("/", zone, "home", username).toString();
-		var mtime = 1700000000;
+		String logicalPath = Paths.get("/", zone, "home", username).toString();
+		int mtime = 1700000000;
 
 		// Set the mtime of the rodsadmin's home collection to a specific value.
-		var options = new HashMap<String, Object>();
+		HashMap<String, Object> options = new HashMap<String, Object>();
 		options.put("seconds_since_epoch", mtime);
 
-		var touchInput = new HashMap<String, Object>();
+		HashMap<String, Object> touchInput = new HashMap<String, Object>();
 		touchInput.put("logical_path", logicalPath);
 		touchInput.put("options", options);
 
-		var input = JsonUtil.toJsonString(touchInput);
+		String input = JsonUtil.toJsonString(touchInput);
 		System.out.println(input);
-		var ec = IRODSApi.rcTouch(comm, input);
+		int ec = IRODSApi.rcTouch(comm, input);
 		assertEquals(ec, 0);
 
 		// Show the collection's mtime has been changed to the target mtime.
-		var statInput = new DataObjInp_PI();
+		DataObjInp_PI statInput = new DataObjInp_PI();
 		statInput.objPath = logicalPath;
 
-		var output = new Reference<RodsObjStat_PI>();
+		Reference<RodsObjStat_PI> output = new Reference<RodsObjStat_PI>();
 
 		ec = IRODSApi.rcObjStat(comm, statInput, output);
 		assertFalse(ec < 0);

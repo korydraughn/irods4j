@@ -40,13 +40,13 @@ class TestRcGenQuery2 {
 
 	@Test
 	void testRcGenQuery2() throws IOException, IRODSException {
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = "select COLL_NAME";
 //		input.zone = zone;
 		input.sql_only = 0;
 		input.column_mappings = 0;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
 		assertEquals(IRODSApi.rcGenQuery2(comm, input, output), 0);
 		assertNotNull(output);
@@ -57,13 +57,13 @@ class TestRcGenQuery2 {
 	// TODO Update this test's behavior to match its name.
 	@Test
 	void testRcGenQuey2HandlesEmbeddedSingleQuotes() throws IOException, IRODSException {
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = "select COLL_NAME";
 		input.zone = zone;
 		input.sql_only = 0;
 		input.column_mappings = 0;
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
 		assertEquals(IRODSApi.rcGenQuery2(comm, input, output), 0);
 		assertNotNull(output);

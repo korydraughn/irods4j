@@ -45,14 +45,14 @@ class TestRcObjStat {
 
 	@Test
 	void testRcObjStat() throws IOException {
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = "/tempZone/home/" + username;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 0;
 
-		var output = new Reference<RodsObjStat_PI>();
+		Reference<RodsObjStat_PI> output = new Reference<RodsObjStat_PI>();
 
-		var ec = IRODSApi.rcObjStat(comm, input, output);
+		int ec = IRODSApi.rcObjStat(comm, input, output);
 		assertTrue(ec > 0);
 		assertNotNull(output);
 		assertNotNull(output.value);

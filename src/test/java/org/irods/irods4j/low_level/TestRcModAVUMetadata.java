@@ -38,13 +38,13 @@ class TestRcModAVUMetadata {
 
 	@Test
 	void testAddingAndRemovingMetadata() throws IOException {
-		var collection = Paths.get("/", zone, "home", username).toString();
-		var avuName = "irods4j::name";
-		var avuValue = "irods4j::value";
-		var avuUnit = "irods4j::unit";
+		String collection = Paths.get("/", zone, "home", username).toString();
+		String avuName = "irods4j::name";
+		String avuValue = "irods4j::value";
+		String avuUnit = "irods4j::unit";
 
 		// Add metadata to the user's home collection.
-		var input = new ModAVUMetadataInp_PI();
+		ModAVUMetadataInp_PI input = new ModAVUMetadataInp_PI();
 		input.arg0 = "set";
 		input.arg1 = "-C";
 		input.arg2 = collection;
@@ -52,7 +52,7 @@ class TestRcModAVUMetadata {
 		input.arg4 = avuValue;
 		input.arg5 = avuUnit;
 
-		var ec = IRODSApi.rcModAVUMetadata(comm, input);
+		int ec = IRODSApi.rcModAVUMetadata(comm, input);
 		assertEquals(ec, 0);
 
 		// Remove the recently added metadata from the user's home collection.

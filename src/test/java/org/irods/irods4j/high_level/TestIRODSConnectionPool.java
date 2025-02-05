@@ -3,6 +3,7 @@ package org.irods.irods4j.high_level;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.logging.log4j.LogManager;
@@ -41,7 +42,7 @@ class TestIRODSConnectionPool {
 
 	@Test
 	void testSynchronousCreationOfPoolWithMultipleConnections() throws Exception {
-		try (var pool = new IRODSConnectionPool(10)) {
+		try (IRODSConnectionPool pool = new IRODSConnectionPool(10)) {
 			pool.start(host, port, new QualifiedUsername(username, zone), comm -> {
 				try {
 					IRODSApi.rcAuthenticateClient(comm, "native", password);
@@ -56,9 +57,9 @@ class TestIRODSConnectionPool {
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			String homeCollection = String.format("/%s/home/%s", zone, username);
 			for (int i = 0; i < 30; ++i) {
-				try (var conn = pool.getConnection()) {
+				try (IRODSConnectionPool.PoolConnection conn = pool.getConnection()) {
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
 			}
@@ -67,9 +68,9 @@ class TestIRODSConnectionPool {
 
 	@Test
 	void testAsynchronousCreationOfPoolWithMultipleConnections() throws Exception {
-		try (var pool = new IRODSConnectionPool(10)) {
+		try (IRODSConnectionPool pool = new IRODSConnectionPool(10)) {
 			// Create a thread pool containing 5 threads.
-			var threadPool = Executors.newFixedThreadPool(5);
+			ExecutorService threadPool = Executors.newFixedThreadPool(5);
 
 			// Use the thread pool to speed up the connection process.
 			pool.start(threadPool, host, port, new QualifiedUsername(username, zone), comm -> {
@@ -86,9 +87,9 @@ class TestIRODSConnectionPool {
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			String homeCollection = String.format("/%s/home/%s", zone, username);
 			for (int i = 0; i < 30; ++i) {
-				try (var conn = pool.getConnection()) {
+				try (IRODSConnectionPool.PoolConnection conn = pool.getConnection()) {
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
 			}
@@ -100,7 +101,7 @@ class TestIRODSConnectionPool {
 	@Test
 	void testBadHostResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
-			try (var pool = new IRODSConnectionPool(1)) {
+			try (IRODSConnectionPool pool = new IRODSConnectionPool(1)) {
 				pool.start("INVALID_HOST", port, new QualifiedUsername(username, zone), comm -> {
 					try {
 						IRODSApi.rcAuthenticateClient(comm, "native", password);
@@ -116,7 +117,7 @@ class TestIRODSConnectionPool {
 	@Test
 	void testBadPortResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
-			try (var pool = new IRODSConnectionPool(1)) {
+			try (IRODSConnectionPool pool = new IRODSConnectionPool(1)) {
 				pool.start(host, 9000, new QualifiedUsername(username, zone), comm -> {
 					try {
 						IRODSApi.rcAuthenticateClient(comm, "native", password);
@@ -132,7 +133,7 @@ class TestIRODSConnectionPool {
 	@Test
 	void testBadAuthSchemeResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
-			try (var pool = new IRODSConnectionPool(1)) {
+			try (IRODSConnectionPool pool = new IRODSConnectionPool(1)) {
 				pool.start(host, port, new QualifiedUsername(username, zone), comm -> {
 					try {
 						IRODSApi.rcAuthenticateClient(comm, "INVALID_AUTH_SCHEME", password);

@@ -85,13 +85,13 @@ public class IRODSUsers {
 				return false;
 			}
 
-			var other = (User) o;
+			User other = (User) o;
 			return name.equals(other.name) && zone.equals(other.zone);
 		}
 
 		@Override
 		public int compareTo(User o) {
-			var result = name.compareTo(o.name);
+			int result = name.compareTo(o.name);
 			if (0 == result) {
 				return zone.compareTo(o.zone);
 			}
@@ -266,7 +266,7 @@ public class IRODSUsers {
 			return user.name;
 		}
 
-		var qualifiedName = new StringBuilder(user.name);
+		StringBuilder qualifiedName = new StringBuilder(user.name);
 
 		if (!user.zone.equals(Common.getLocalZone(comm))) {
 			qualifiedName.append('#');
@@ -307,26 +307,26 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Zone type is null");
 		}
 
-		var name = localUniqueName(comm, user);
+		String name = localUniqueName(comm, user);
 
 		String zone = null;
 		if (ZoneType.LOCAL == zoneType) {
 			zone = Common.getLocalZone(comm);
 		}
 
-		var currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
-		var currentUserType = type(comm, currentUser);
+		User currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
+		Optional<UserType> currentUserType = type(comm, currentUser);
 
 		// We can assume the current user's type will never be empty
 		// because the user is constructed using information from the RcComm.
 		if (currentUserType.get() == UserType.GROUPADMIN) {
-			var input = new UserAdminInp_PI();
+			UserAdminInp_PI input = new UserAdminInp_PI();
 			input.arg0 = "mkuser";
 			input.arg1 = name;
 			// TODO No arg2?
 			input.arg3 = zone;
 
-			var ec = IRODSApi.rcUserAdmin(comm, input);
+			int ec = IRODSApi.rcUserAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcUserAdmin error");
 			}
@@ -334,14 +334,14 @@ public class IRODSUsers {
 			return;
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "user";
 		input.arg2 = name;
 		input.arg3 = toString(currentUserType.get());
 		input.arg4 = zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -367,13 +367,13 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User is null");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "rm";
 		input.arg1 = "user";
 		input.arg2 = localUniqueName(comm, user);
 		input.arg3 = user.zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -407,23 +407,26 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User property is null");
 		}
 
-		var name = localUniqueName(comm, user);
+		String name = localUniqueName(comm, user);
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "modify";
 		input.arg1 = "user";
 		input.arg2 = name;
 
-		if (property instanceof UserPasswordProperty p) {
+		if (property instanceof UserPasswordProperty) {
+			UserPasswordProperty p = (UserPasswordProperty) property;
 			input.arg3 = "password";
 			// TODO Don't rely on obfuscation. Allow clients to send plaintext passwords in
 			// the clear. Open an issue in irods/irods for this - assuming we don't have an
 			// issue already.
 			input.arg4 = obfuscatePassword(p, comm.hashAlgorithm);
-		} else if (property instanceof UserTypeProperty p) {
+		} else if (property instanceof UserTypeProperty) {
+			UserTypeProperty p = (UserTypeProperty) property;
 			input.arg3 = "type";
 			input.arg4 = toString(p.value);
-		} else if (property instanceof UserAuthenticationProperty p) {
+		} else if (property instanceof UserAuthenticationProperty) {
+			UserAuthenticationProperty p = (UserAuthenticationProperty) property;
 			input.arg4 = p.value;
 
 			if (UserAuthenticationOperation.ADD == p.op) {
@@ -433,7 +436,7 @@ public class IRODSUsers {
 			}
 		}
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -459,20 +462,20 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Group is null");
 		}
 
-		var zone = Common.getLocalZone(comm);
-		var currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
-		var currentUserType = type(comm, currentUser);
+		String zone = Common.getLocalZone(comm);
+		User currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
+		Optional<UserType> currentUserType = type(comm, currentUser);
 
 		// We can assume the current user's type will never be empty
 		// because the user is constructed using information from the RcComm.
 		if (currentUserType.get() == UserType.GROUPADMIN) {
-			var input = new UserAdminInp_PI();
+			UserAdminInp_PI input = new UserAdminInp_PI();
 			input.arg0 = "mkgroup";
 			input.arg1 = group.name;
 			input.arg2 = "rodsgroup";
 			input.arg3 = zone;
 
-			var ec = IRODSApi.rcUserAdmin(comm, input);
+			int ec = IRODSApi.rcUserAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcUserAdmin error");
 			}
@@ -480,14 +483,14 @@ public class IRODSUsers {
 			return;
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "user";
 		input.arg2 = group.name;
 		input.arg3 = "rodsgroup";
 		input.arg4 = zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -513,13 +516,13 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Group is null");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "rm";
 		input.arg1 = "group";
 		input.arg2 = group.name;
 		input.arg3 = Common.getLocalZone(comm);
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -551,13 +554,13 @@ public class IRODSUsers {
 		}
 
 //		var name = localUniqueName(comm, user);
-		var currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
-		var currentUserType = type(comm, currentUser);
+		User currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
+		Optional<UserType> currentUserType = type(comm, currentUser);
 
 		// We can assume the current user's type will never be empty
 		// because the user is constructed using information from the RcComm.
 		if (currentUserType.get() == UserType.GROUPADMIN) {
-			var input = new UserAdminInp_PI();
+			UserAdminInp_PI input = new UserAdminInp_PI();
 			input.arg0 = "modify";
 			input.arg1 = "group";
 			input.arg2 = group.name;
@@ -565,7 +568,7 @@ public class IRODSUsers {
 			input.arg4 = user.name;
 			input.arg5 = user.zone;
 
-			var ec = IRODSApi.rcUserAdmin(comm, input);
+			int ec = IRODSApi.rcUserAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcUserAdmin error");
 			}
@@ -573,7 +576,7 @@ public class IRODSUsers {
 			return;
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "modify";
 		input.arg1 = "group";
 		input.arg2 = group.name;
@@ -581,7 +584,7 @@ public class IRODSUsers {
 		input.arg4 = user.name;
 		input.arg5 = user.zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -613,13 +616,13 @@ public class IRODSUsers {
 		}
 
 //		var name = localUniqueName(comm, user);
-		var currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
-		var currentUserType = type(comm, currentUser);
+		User currentUser = new User(comm.clientUsername, Optional.of(comm.clientUserZone));
+		Optional<UserType> currentUserType = type(comm, currentUser);
 
 		// We can assume the current user's type will never be empty
 		// because the user is constructed using information from the RcComm.
 		if (currentUserType.get() == UserType.GROUPADMIN) {
-			var input = new UserAdminInp_PI();
+			UserAdminInp_PI input = new UserAdminInp_PI();
 			input.arg0 = "modify";
 			input.arg1 = "group";
 			input.arg2 = group.name;
@@ -627,7 +630,7 @@ public class IRODSUsers {
 			input.arg4 = user.name;
 			input.arg5 = user.zone;
 
-			var ec = IRODSApi.rcUserAdmin(comm, input);
+			int ec = IRODSApi.rcUserAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcUserAdmin error");
 			}
@@ -635,7 +638,7 @@ public class IRODSUsers {
 			return;
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "modify";
 		input.arg1 = "group";
 		input.arg2 = group.name;
@@ -643,7 +646,7 @@ public class IRODSUsers {
 		input.arg4 = user.name;
 		input.arg5 = user.zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -669,20 +672,20 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = "select USER_NAME, USER_ZONE where USER_TYPE != 'rodsgroup' limit 100000";
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var users = new ArrayList<User>();
-		var typeRef = new TypeReference<List<List<String>>>() {
+		ArrayList<User> users = new ArrayList<User>();
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (!rows.isEmpty()) {
 			rows.forEach(row -> users.add(new User(row.get(0), Optional.of(row.get(1)))));
 		}
@@ -712,7 +715,7 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Group is null");
 		}
 
-		var input = new GenQuery1QueryArgs();
+		GenQuery1QueryArgs input = new GenQuery1QueryArgs();
 		// select USER_NAME, USER_ZONE ...
 		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_NAME);
 		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_ZONE);
@@ -720,7 +723,7 @@ public class IRODSUsers {
 		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_TYPE, "!= 'rodsgroup'");
 		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_GROUP_NAME, String.format("= '%s'", group.name));
 
-		var users = new ArrayList<User>();
+		ArrayList<User> users = new ArrayList<User>();
 
 		IRODSQuery.executeGenQuery1(comm, input, row -> {
 			users.add(new User(row.get(0), Optional.of(row.get(1))));
@@ -750,20 +753,20 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = "select USER_NAME where USER_TYPE = 'rodsgroup' limit 100000";
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var groups = new ArrayList<Group>();
-		var typeRef = new TypeReference<List<List<String>>>() {
+		ArrayList<Group> groups = new ArrayList<Group>();
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (!rows.isEmpty()) {
 			rows.forEach(row -> groups.add(new Group(row.get(0))));
 		}
@@ -793,9 +796,9 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User is null");
 		}
 
-		var groups = new ArrayList<Group>();
+		ArrayList<Group> groups = new ArrayList<Group>();
 
-		var bindArgs = Arrays.asList(localUniqueName(comm, user));
+		List<String> bindArgs = Arrays.asList(localUniqueName(comm, user));
 		IRODSQuery.executeSpecificQuery(comm, "listGroupsForUser", bindArgs, row -> {
 			groups.add(new Group(row.get(1)));
 			return true;
@@ -826,21 +829,21 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format(
 				"select USER_ID where USER_TYPE != 'rodsgroup' and USER_NAME = '%s' and USER_ZONE = '%s'", user.name,
 				(user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone));
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		return !rows.isEmpty();
 	}
 
@@ -866,20 +869,20 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Group is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select GROUP_ID where USER_TYPE = 'rodsgroup' and USER_NAME = '%s'",
 				group.name);
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		return !rows.isEmpty();
 	}
 
@@ -905,21 +908,21 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format(
 				"select USER_ID where USER_TYPE != 'rodsgroup' and USER_NAME = '%s' and USER_ZONE = '%s'", user.name,
 				(user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone));
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}
@@ -949,20 +952,20 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("Group is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select GROUP_ID where USER_TYPE = 'rodsgroup' and USER_NAME = '%s'",
 				group.name);
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}
@@ -992,21 +995,21 @@ public class IRODSUsers {
 			throw new IllegalArgumentException("User is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format(
 				"select USER_TYPE where USER_TYPE != 'rodsgroup' and USER_NAME = '%s' and USER_ZONE = '%s'", user.name,
 				(user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone));
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}
@@ -1029,7 +1032,7 @@ public class IRODSUsers {
 	 * @since 0.1.0
 	 */
 	public static boolean userIsMemberOfGroup(RcComm comm, Group group, User user) throws IOException, IRODSException {
-		var input = new GenQuery1QueryArgs();
+		GenQuery1QueryArgs input = new GenQuery1QueryArgs();
 		// select USER_ID ...
 		input.addColumnToSelectClause(GenQuery1Columns.COL_USER_ID);
 		// where USER_TYPE != 'rodsgroup' ...
@@ -1037,12 +1040,12 @@ public class IRODSUsers {
 		// and USER_NAME = '<name>' ...
 		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_NAME, String.format("= '%s'", user.name));
 		// and USER_ZONE = '<zone>' ...
-		var zone = user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone;
+		String zone = user.zone.isEmpty() ? Common.getLocalZone(comm) : user.zone;
 		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_ZONE, String.format("= '%s'", zone));
 		// and USER_GROUP_NAME = '<group>'
 		input.addConditionToWhereClause(GenQuery1Columns.COL_USER_GROUP_NAME, String.format("= '%s'", group.name));
 
-		var userIds = new ArrayList<String>();
+		ArrayList<String> userIds = new ArrayList<String>();
 
 		IRODSQuery.executeGenQuery1(comm, input, row -> {
 			userIds.add(row.get(0));
@@ -1053,20 +1056,20 @@ public class IRODSUsers {
 	}
 
 	private static String obfuscatePassword(UserPasswordProperty p, String hashAlgo) throws NoSuchAlgorithmException {
-		final var MAX_PASSWORD_LEN = 50;
+		final int MAX_PASSWORD_LEN = 50;
 
-		var plainTextPasswordSb = new StringBuilder();
+		StringBuilder plainTextPasswordSb = new StringBuilder();
 		plainTextPasswordSb.append(p.value);
 		plainTextPasswordSb.setLength(MAX_PASSWORD_LEN + 10);
 
-		var count = MAX_PASSWORD_LEN - 10 - p.value.length();
+		int count = MAX_PASSWORD_LEN - 10 - p.value.length();
 		if (count > 15) {
 			// The random sequence of characters is used for padding and must match
 			// what is defined on the server-side.
 			plainTextPasswordSb.append("1gCBizHWbwIYyWLoysGzTe6SyzqFKMniZX05faZHWAwQKXf6Fs".substring(0, count));
 		}
 
-		var keySb = new StringBuilder();
+		StringBuilder keySb = new StringBuilder();
 		if (p.requesterPassword.length() >= MAX_PASSWORD_LEN) {
 			throw new IllegalArgumentException("Requester password exceeds max key size: " + MAX_PASSWORD_LEN);
 		}
@@ -1084,9 +1087,9 @@ public class IRODSUsers {
 //		for (int x = 0; x < length; ++x) {
 //			keyBuf[x] = (int) (keyBytes[x] & 0xff);
 //		}
-		var keyBuf = new int[100];
-		var keyBytes = key.getBytes(StandardCharsets.UTF_8);
-		var length = Math.min(keyBuf.length, key.length());
+		int[] keyBuf = new int[100];
+		byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
+		int length = Math.min(keyBuf.length, key.length());
 		for (int x = 0; x < length; ++x) {
 			keyBuf[x] = keyBytes[x] & 0xff;
 		}
@@ -1095,12 +1098,12 @@ public class IRODSUsers {
 		// Get the MD5 digest of the key to get some bytes with many different values.
 //		var hexKey = obfMakeOneWayHash("md5", keyBuf, keyBuf.length - 1);
 //		var buffer = new int[64 + 1]; // Each digest is 16 bytes, 4 of them.
-		var hexKey = obfMakeOneWayHash(hashAlgo, keyBuf, keyBuf.length);
-		var buffer = new int[64]; // Each digest is 16 bytes, 4 of them.
+		byte[] hexKey = obfMakeOneWayHash(hashAlgo, keyBuf, keyBuf.length);
+		int[] buffer = new int[64]; // Each digest is 16 bytes, 4 of them.
 		copyIntArrayToByteArray(buffer, 0, hexKey, hexKey.length);
 
 		// Hash of the hash.
-		var v = obfMakeOneWayHash(hashAlgo, buffer, 16);
+		byte[] v = obfMakeOneWayHash(hashAlgo, buffer, 16);
 		copyIntArrayToByteArray(buffer, 16, v, v.length);
 
 		// Hash of two hashes.
@@ -1111,12 +1114,12 @@ public class IRODSUsers {
 		v = obfMakeOneWayHash(hashAlgo, buffer, 32);
 		copyIntArrayToByteArray(buffer, 48, v, v.length);
 
-		final var MAX_PASSWORD_LEN = 50;
+		final int MAX_PASSWORD_LEN = 50;
 
-		var inSb = new StringBuilder(data);
+		StringBuilder inSb = new StringBuilder(data);
 		inSb.setLength(MAX_PASSWORD_LEN + 10);
 
-		var outSb = new StringBuilder();
+		StringBuilder outSb = new StringBuilder();
 		outSb.setLength(MAX_PASSWORD_LEN + 100);
 
 		// TODO
@@ -1127,31 +1130,31 @@ public class IRODSUsers {
 //			inSb.setCharAt(cpOut++, '1');
 //		}
 
-		var wheel = new int[26 + 26 + 10 + 15];
+		int[] wheel = new int[26 + 26 + 10 + 15];
 		int j = 0;
-		for (var i = 0; i < 10; ++i) {
+		for (int i = 0; i < 10; ++i) {
 			wheel[j++] = (int) '0' + i;
 		}
-		for (var i = 0; i < 26; ++i) {
+		for (int i = 0; i < 26; ++i) {
 			wheel[j++] = (int) 'A' + i;
 		}
-		for (var i = 0; i < 26; ++i) {
+		for (int i = 0; i < 26; ++i) {
 			wheel[j++] = (int) 'a' + i;
 		}
-		for (var i = 0; i < 15; ++i) {
+		for (int i = 0; i < 15; ++i) {
 			wheel[j++] = (int) '!' + i;
 		}
 
-		var cpKey = 0;
-		var pc = 0; // Previous character.
+		int cpKey = 0;
+		int pc = 0; // Previous character.
 		for (int cpIn = 0, cpOut = 0;; ++cpIn) {
-			var k = buffer[cpKey++];
+			int k = buffer[cpKey++];
 			if (cpKey > 60) {
 				cpKey = 0;
 			}
 
-			var found = false;
-			for (var i = 0; i < wheel.length; ++i) {
+			boolean found = false;
+			for (int i = 0; i < wheel.length; ++i) {
 				if ((int) inSb.charAt(cpIn) == wheel[i]) {
 					j = i + k + pc;
 					j %= wheel.length;
@@ -1183,13 +1186,13 @@ public class IRODSUsers {
 	private static byte[] obfMakeOneWayHash(String hashAlgo, int[] buffer, int bufferLength)
 			throws NoSuchAlgorithmException {
 		// Convert int array to a unsigned byte array.
-		var bufUnsigned = new byte[bufferLength];
+		byte[] bufUnsigned = new byte[bufferLength];
 		for (int x = 0; x < bufferLength; ++x) {
 			bufUnsigned[x] = (byte) (buffer[x] & 0xff);
 		}
 
 		// Hash the buffer.
-		var hasher = MessageDigest.getInstance(hashAlgo);
+		MessageDigest hasher = MessageDigest.getInstance(hashAlgo);
 		return hasher.digest(bufUnsigned);
 	}
 

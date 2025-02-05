@@ -28,10 +28,10 @@ public class AuthManager {
 			throw new IllegalArgumentException("Authentication scheme not supported: " + authScheme);
 		}
 
-		var nextOp = AuthPlugin.AUTH_CLIENT_START;
+		String nextOp = AuthPlugin.AUTH_CLIENT_START;
 
-		var req = context.deepCopy();
-		var mutableReq = (ObjectNode) req;
+		JsonNode req = context.deepCopy();
+		ObjectNode mutableReq = (ObjectNode) req;
 		mutableReq.put("scheme", authScheme);
 		mutableReq.put("next_operation", nextOp);
 		

@@ -40,21 +40,21 @@ class TestRcSwitchUser {
 
 	@Test
 	void testRcSwitchUser() throws Exception {
-		var otherUser = "otherRods";
+		String otherUser = "otherRods";
 
 		// Add a new rodsuser to the zone.
-		var addUserInput = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI addUserInput = new GeneralAdminInp_PI();
 		addUserInput.arg0 = "add";
 		addUserInput.arg1 = "user";
 		addUserInput.arg2 = otherUser;
 		addUserInput.arg3 = "rodsuser";
 		addUserInput.arg4 = zone;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, addUserInput);
+		int ec = IRODSApi.rcGeneralAdmin(comm, addUserInput);
 		assertEquals(ec, 0);
 
 		// Become the new rodsuser.
-		var switchUserInput = new SwitchUserInp_PI();
+		SwitchUserInp_PI switchUserInput = new SwitchUserInp_PI();
 		switchUserInput.username = otherUser;
 		switchUserInput.zone = zone;
 		switchUserInput.KeyValPair_PI = new KeyValPair_PI();
@@ -76,13 +76,13 @@ class TestRcSwitchUser {
 		// Connect as the local rodsadmin and remove the recently created user.
 		// This is required because we became a rodsuser, which means we lost
 		// rodsadmin level privileges.
-		var adminComm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(),
+		RcComm adminComm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(),
 				Optional.empty(), Optional.empty());
 		assertNotNull(adminComm);
 		IRODSApi.rcAuthenticateClient(adminComm, "native", password);
 
 		// Remove the rodsuser.
-		var removeUserInput = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI removeUserInput = new GeneralAdminInp_PI();
 		removeUserInput.arg0 = "rm";
 		removeUserInput.arg1 = "user";
 		removeUserInput.arg2 = otherUser;

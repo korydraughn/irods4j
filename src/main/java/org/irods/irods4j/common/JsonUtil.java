@@ -13,7 +13,7 @@ public class JsonUtil {
 	private static ObjectMapper om = new ObjectMapper();
 
 	public static ObjectMapper setJsonMapper(ObjectMapper other) {
-		var old = om;
+		ObjectMapper old = om;
 		om = other;
 		return old;
 	}

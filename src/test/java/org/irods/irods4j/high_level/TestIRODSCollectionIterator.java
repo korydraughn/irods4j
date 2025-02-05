@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ import org.irods.irods4j.common.XmlUtil;
 import org.irods.irods4j.high_level.connection.IRODSConnection;
 import org.irods.irods4j.high_level.connection.QualifiedUsername;
 import org.irods.irods4j.high_level.io.IRODSDataObjectStream;
+import org.irods.irods4j.high_level.vfs.CollectionEntry;
 import org.irods.irods4j.high_level.vfs.IRODSCollectionIterator;
 import org.irods.irods4j.low_level.api.IRODSApi;
 import org.irods.irods4j.low_level.api.IRODSKeywords;
@@ -56,9 +58,9 @@ class TestIRODSCollectionIterator {
 
 	@Test
 	void testIteratingOverCollectionHoldingAllHomeCollections() throws Exception {
-		var paths = new ArrayList<String>();
-		var collection = Paths.get("/", zone, "home").toString();
-		for (var e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
+		ArrayList<String> paths = new ArrayList<String>();
+		String collection = Paths.get("/", zone, "home").toString();
+		for (CollectionEntry e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
 			paths.add(e.path());
 		}
 		paths.forEach(log::debug);
@@ -67,9 +69,9 @@ class TestIRODSCollectionIterator {
 
 	@Test
 	void testIteratingOverAnEmptyCollection() throws Exception {
-		var paths = new ArrayList<String>();
-		var collection = Paths.get("/", zone, "home", "public").toString();
-		for (var e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
+		ArrayList<String> paths = new ArrayList<String>();
+		String collection = Paths.get("/", zone, "home", "public").toString();
+		for (CollectionEntry e : new IRODSCollectionIterator(conn.getRcComm(), collection)) {
 			paths.add(e.path());
 		}
 		assertTrue(paths.isEmpty());
@@ -77,22 +79,22 @@ class TestIRODSCollectionIterator {
 
 	@Test
 	void testConstructingAnIteratorFromADataObjectPathResultsInANullIterator() throws Exception {
-		var dataObjectName = "testIteratingUsingADataObjectPathResultsInAnException";
-		var path = Paths.get("/", zone, "home", username, dataObjectName).toString();
+		String dataObjectName = "testIteratingUsingADataObjectPathResultsInAnException";
+		String path = Paths.get("/", zone, "home", username, dataObjectName).toString();
 
 		try {
 			// Create the data object.
-			try (var dataObject = new IRODSDataObjectStream()) {
+			try (IRODSDataObjectStream dataObject = new IRODSDataObjectStream()) {
 				dataObject.open(conn.getRcComm(), path, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 			}
 
-			var collIterator = new IRODSCollectionIterator(conn.getRcComm(), path);
-			var iter = collIterator.iterator();
+			IRODSCollectionIterator collIterator = new IRODSCollectionIterator(conn.getRcComm(), path);
+			Iterator<CollectionEntry> iter = collIterator.iterator();
 			assertNotNull(iter);
 			assertFalse(iter.hasNext());
 		} finally {
 			// Remove the data object.
-			var input = new DataObjInp_PI();
+			DataObjInp_PI input = new DataObjInp_PI();
 			input.objPath = path;
 			input.KeyValPair_PI = new KeyValPair_PI();
 			input.KeyValPair_PI.ssLen = 1;

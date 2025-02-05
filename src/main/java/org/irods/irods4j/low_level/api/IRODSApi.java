@@ -18,6 +18,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.authentication.AuthManager;
@@ -168,7 +169,7 @@ public class IRODSApi {
 
 	private static void sendApiRequest(OutputStream out, int apiNumber) throws IOException {
 		// Create the header describing the message.
-		var mh = new MsgHeader_PI();
+		MsgHeader_PI mh = new MsgHeader_PI();
 		mh.type = MsgHeader_PI.MsgType.RODS_API_REQ;
 		mh.intInfo = apiNumber;
 
@@ -178,10 +179,10 @@ public class IRODSApi {
 	}
 
 	private static void sendApiRequest(OutputStream out, int apiNumber, Object data) throws IOException {
-		var msgbody = XmlUtil.toXmlString(data);
+		String msgbody = XmlUtil.toXmlString(data);
 
 		// Create the header describing the message.
-		var mh = new MsgHeader_PI();
+		MsgHeader_PI mh = new MsgHeader_PI();
 		mh.type = MsgHeader_PI.MsgType.RODS_API_REQ;
 		mh.intInfo = apiNumber;
 		mh.msgLen = msgbody.length();
@@ -193,10 +194,10 @@ public class IRODSApi {
 	}
 
 	private static void sendApiRequest(OutputStream out, int apiNumber, Object data, byte[] bytes, int byteCount) throws IOException {
-		var msgbody = XmlUtil.toXmlString(data);
+		String msgbody = XmlUtil.toXmlString(data);
 
 		// Create the header describing the message.
-		var mh = new MsgHeader_PI();
+		MsgHeader_PI mh = new MsgHeader_PI();
 		mh.type = MsgHeader_PI.MsgType.RODS_API_REQ;
 		mh.intInfo = apiNumber;
 		mh.msgLen = msgbody.length();
@@ -211,7 +212,7 @@ public class IRODSApi {
 
 	private static <T> int receiveServerResponse(RcComm comm, Class<T> targetClass, Reference<T> output,
 			ByteArrayReference bsBuffer) throws IOException {
-		var mh = Network.readMsgHeader_PI(comm.sin);
+		MsgHeader_PI mh = Network.readMsgHeader_PI(comm.sin);
 
 		if (mh.msgLen > 0 && null != targetClass) {
 			output.value = Network.readObject(comm.sin, mh.msgLen, targetClass);
@@ -259,7 +260,7 @@ public class IRODSApi {
 		public int ppBandwidth = 0;
 
 		public ConnectionOptions copy() {
-			var copy = new ConnectionOptions();
+			ConnectionOptions copy = new ConnectionOptions();
 
 			copy.clientServerNegotiation = clientServerNegotiation;
 
@@ -308,7 +309,7 @@ public class IRODSApi {
 			throw new IllegalArgumentException("Client zone is null or empty");
 		}
 
-		var connOptions = options.orElse(new ConnectionOptions());
+		ConnectionOptions connOptions = options.orElse(new ConnectionOptions());
 
 		RcComm comm = new RcComm();
 		comm.socket = comm.plainSocket = new Socket();
@@ -344,16 +345,16 @@ public class IRODSApi {
 
 		// Create the StartupPack message.
 		// This is how a connection to iRODS is always initiated.
-		var sp = new StartupPack_PI();
+		StartupPack_PI sp = new StartupPack_PI();
 		sp.clientUser = comm.clientUsername = clientUsername;
 		sp.clientRcatZone = comm.clientUserZone = clientUserZone;
 		sp.proxyUser = comm.proxyUsername = proxyUsername.orElse(clientUsername);
 		sp.proxyRcatZone = comm.proxyUserZone = proxyUserZone.orElse(clientUserZone);
 		sp.option = appName + "request_server_negotiation";
-		var msgbody = XmlUtil.toXmlString(sp);
+		String msgbody = XmlUtil.toXmlString(sp);
 
 		// Create the header describing the StartupPack message.
-		var hdr = new MsgHeader_PI();
+		MsgHeader_PI hdr = new MsgHeader_PI();
 		hdr.type = MsgHeader_PI.MsgType.RODS_CONNECT;
 		hdr.msgLen = msgbody.length();
 
@@ -363,7 +364,7 @@ public class IRODSApi {
 		comm.sout.flush();
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.sin);
+		MsgHeader_PI mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		if (mh.intInfo < 0) {
@@ -379,7 +380,7 @@ public class IRODSApi {
 		// Prepare to the negotiate whether a secure communication
 		// channel is needed. The server's response will contain its
 		// choice for secure communication.
-		var csneg = Network.readObject(comm.sin, mh.msgLen, CS_NEG_PI.class);
+		CS_NEG_PI csneg = Network.readObject(comm.sin, mh.msgLen, CS_NEG_PI.class);
 		log.debug("Received CS_NEG_PI: {}", XmlUtil.toXmlString(csneg));
 
 		// Check for negotiation errors.
@@ -413,7 +414,7 @@ public class IRODSApi {
 		}
 
 		// Capture the server version information.
-		var vers = Network.readObject(comm.sin, mh.msgLen, Version_PI.class);
+		Version_PI vers = Network.readObject(comm.sin, mh.msgLen, Version_PI.class);
 		log.debug("Received Version_PI: {}", XmlUtil.toXmlString(vers));
 		comm.apiVersion = vers.apiVersion;
 		comm.relVersion = vers.relVersion;
@@ -437,7 +438,7 @@ public class IRODSApi {
 	}
 
 	private static CS_NEG_PI clientServerNegotiation(RcComm comm, String clientNeg, String serverNeg) {
-		var csneg = new CS_NEG_PI();
+		CS_NEG_PI csneg = new CS_NEG_PI();
 
 		csneg.status = 1;
 
@@ -491,16 +492,16 @@ public class IRODSApi {
 		// This block is for loading self-signed certificates.
 		if (null != options.sslTruststore) {
 			log.debug("Loading Truststore.");
-			var trustStore = KeyStore.getInstance("JKS");
+			KeyStore trustStore = KeyStore.getInstance("JKS");
 
 			if (null != options.sslTruststorePassword) {
-				try (var fis = new FileInputStream(options.sslTruststore)) {
+				try (FileInputStream fis = new FileInputStream(options.sslTruststore)) {
 					trustStore.load(fis, options.sslTruststorePassword.toCharArray());
 				}
 			}
 
 			log.debug("Initializing Truststore.");
-			var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 			tmf.init(trustStore);
 
 			log.debug("Initializing SSL context.");
@@ -514,20 +515,20 @@ public class IRODSApi {
 
 			// Create SSLSocket and connect.
 			log.debug("Securing socket communication.");
-			var factory = sslContext.getSocketFactory();
-			var host = comm.socket.getInetAddress().getHostAddress();
-			var port = comm.socket.getPort();
-			var autoCloseUnderlyingSocket = true;
+			SSLSocketFactory factory = sslContext.getSocketFactory();
+			String host = comm.socket.getInetAddress().getHostAddress();
+			int port = comm.socket.getPort();
+			boolean autoCloseUnderlyingSocket = true;
 			comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
 			comm.sslSocket.startHandshake();
 			log.debug("Connection secured!");
 		} else {
 			// Handle certificates which live in the normal OS directories.
 			log.debug("Securing socket communication.");
-			var factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-			var host = comm.socket.getInetAddress().getHostAddress();
-			var port = comm.socket.getPort();
-			var autoCloseUnderlyingSocket = true;
+			SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+			String host = comm.socket.getInetAddress().getHostAddress();
+			int port = comm.socket.getPort();
+			boolean autoCloseUnderlyingSocket = true;
 			comm.sslSocket = (SSLSocket) factory.createSocket(comm.socket, host, port, autoCloseUnderlyingSocket);
 			comm.sslSocket.startHandshake();
 			log.debug("Connection secured!");
@@ -537,24 +538,24 @@ public class IRODSApi {
 		// operations. The code below follows ssl_client_start() and ssl_agent_start().
 
 		// Send SSL encryption information to server.
-		var mh = new MsgHeader_PI();
+		MsgHeader_PI mh = new MsgHeader_PI();
 		mh.type = options.encryptionAlgorithm;
 		mh.msgLen = options.encryptionKeySize;
 		mh.errorLen = options.encryptionSaltSize;
 		mh.bsLen = options.encryptionNumHashRounds;
 
-		var sout = new BufferedOutputStream(comm.sslSocket.getOutputStream());
+		BufferedOutputStream sout = new BufferedOutputStream(comm.sslSocket.getOutputStream());
 		Network.write(sout, mh);
 
 		// Generate a random byte sequence as a key and send it to the server.
-		var key = new byte[options.encryptionKeySize];
-		var secureRandom = new SecureRandom();
+		byte[] key = new byte[options.encryptionKeySize];
+		SecureRandom secureRandom = new SecureRandom();
 		secureRandom.nextBytes(key);
 
-		var bbuf = new BytesBuf_PI();
+		BytesBuf_PI bbuf = new BytesBuf_PI();
 		bbuf.buflen = key.length;
 		bbuf.buf = key;
-		var msgbody = XmlUtil.toXmlString(bbuf);
+		String msgbody = XmlUtil.toXmlString(bbuf);
 
 		mh.type = "SHARED_SECRET";
 		mh.msgLen = msgbody.length();
@@ -582,12 +583,12 @@ public class IRODSApi {
 
 	// TODO Consider removing this function.
 	private static int rcSslStart(RcComm comm) throws IOException {
-		var input = new SSLStartInp_PI();
+		SSLStartInp_PI input = new SSLStartInp_PI();
 		input.arg0 = null;
 		sendApiRequest(comm.sout, 1100, input);
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.sin);
+		MsgHeader_PI mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		return mh.intInfo;
@@ -595,25 +596,25 @@ public class IRODSApi {
 
 	// TODO Consider removing this function.
 	private static int rcSslEnd(RcComm comm) throws IOException {
-		var input = new SSLEndInp_PI();
+		SSLEndInp_PI input = new SSLEndInp_PI();
 		sendApiRequest(comm.sout, 1101, input);
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.sin);
+		MsgHeader_PI mh = Network.readMsgHeader_PI(comm.sin);
 		log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 
 		return mh.intInfo;
 	}
 
 	public static void rcDisconnect(RcComm comm) throws IOException {
-		final var hdr = new MsgHeader_PI();
+		final MsgHeader_PI hdr = new MsgHeader_PI();
 		hdr.type = MsgHeader_PI.MsgType.RODS_DISCONNECT;
 		Network.write(comm.sout, hdr);
 		comm.socket.close();
 	}
 
 	public static void rcAuthenticateClient(RcComm comm, String authScheme, String password) throws Exception {
-		var input = JsonUtil.getJsonMapper().createObjectNode();
+		ObjectNode input = JsonUtil.getJsonMapper().createObjectNode();
 		input.put("password", password);
 		input.put(AuthPlugin.AUTH_TTL_KEY, "0"); // TODO Expose this option and others.
 		AuthManager.authenticateClient(comm, authScheme, input);
@@ -632,8 +633,8 @@ public class IRODSApi {
 
 	public static int rcGenQuery2(RcComm comm, Genquery2Input_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.sout, 10221, input);
-		var outputPI = new Reference<STR_PI>();
-		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
+		Reference<STR_PI> outputPI = new Reference<STR_PI>();
+		int ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}
@@ -642,8 +643,8 @@ public class IRODSApi {
 
 	public static int rcReplicaOpen(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.sout, 20003, input);
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -652,8 +653,8 @@ public class IRODSApi {
 
 	public static int rcReplicaTruncate(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.sout, 802, input);
-		var outputPI = new Reference<STR_PI>();
-		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
+		Reference<STR_PI> outputPI = new Reference<STR_PI>();
+		int ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}
@@ -678,7 +679,7 @@ public class IRODSApi {
 	}
 
 	public static int rcReplicaClose(RcComm comm, String closeOptions) throws IOException {
-		var input = new BinBytesBuf_PI();
+		BinBytesBuf_PI input = new BinBytesBuf_PI();
 		input.buf = closeOptions;
 		input.buflen = closeOptions.length();
 		sendApiRequest(comm.sout, 20004, input);
@@ -687,13 +688,13 @@ public class IRODSApi {
 
 	public static int rcAtomicApplyMetadataOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
-		var bbbuf = new BinBytesBuf_PI();
+		BinBytesBuf_PI bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
 		sendApiRequest(comm.sout, 20002, bbbuf);
 
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -703,13 +704,13 @@ public class IRODSApi {
 
 	public static int rcAtomicApplyAclOperations(RcComm comm, String input, Reference<String> output)
 			throws IOException {
-		var bbbuf = new BinBytesBuf_PI();
+		BinBytesBuf_PI bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
 		sendApiRequest(comm.sout, 20005, bbbuf);
 
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -718,7 +719,7 @@ public class IRODSApi {
 	}
 
 	public static int rcTouch(RcComm comm, String input) throws IOException {
-		var bbbuf = new BinBytesBuf_PI();
+		BinBytesBuf_PI bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
 		sendApiRequest(comm.sout, 20007, bbbuf);
@@ -742,12 +743,12 @@ public class IRODSApi {
 	}
 
 	public static int rcGetDelayRuleInfo(RcComm comm, String input, Reference<String> output) throws IOException {
-		var strPI = new STR_PI();
+		STR_PI strPI = new STR_PI();
 		strPI.myStr = input;
 		sendApiRequest(comm.sout, 20013, strPI);
 
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -756,13 +757,13 @@ public class IRODSApi {
 	}
 
 	public static int rcGetFileDescriptorInfo(RcComm comm, String input, Reference<String> output) throws IOException {
-		var bbbuf = new BinBytesBuf_PI();
+		BinBytesBuf_PI bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = input;
 		bbbuf.buflen = input.length();
 		sendApiRequest(comm.sout, 20000, bbbuf);
 
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -788,7 +789,7 @@ public class IRODSApi {
 		}
 
 		sendApiRequest(comm.sout, 20012, input);
-		var ec = receiveServerResponse(comm, null, null, null);
+		int ec = receiveServerResponse(comm, null, null, null);
 
 		if (0 == ec) {
 			comm.clientUsername = input.username;
@@ -807,8 +808,8 @@ public class IRODSApi {
 	public static int rcCheckAuthCredentials(RcComm comm, DataObjInp_PI input, Reference<Integer> output)
 			throws IOException {
 		sendApiRequest(comm.sout, 800, input);
-		var outputPI = new Reference<INT_PI>();
-		var ec = receiveServerResponse(comm, INT_PI.class, outputPI, null);
+		Reference<INT_PI> outputPI = new Reference<INT_PI>();
+		int ec = receiveServerResponse(comm, INT_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myInt;
 		}
@@ -819,8 +820,8 @@ public class IRODSApi {
 	public static int rcRegisterPhysicalPath(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.sout, 20008, input);
-		var outputPI = new Reference<BinBytesBuf_PI>();
-		var ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
+		Reference<BinBytesBuf_PI> outputPI = new Reference<BinBytesBuf_PI>();
+		int ec = receiveServerResponse(comm, BinBytesBuf_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.buf;
 		}
@@ -871,8 +872,8 @@ public class IRODSApi {
 
 	public static int rcDataObjChksum(RcComm comm, DataObjInp_PI input, Reference<String> output) throws IOException {
 		sendApiRequest(comm.sout, 629, input);
-		var outputPI = new Reference<STR_PI>();
-		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
+		Reference<STR_PI> outputPI = new Reference<STR_PI>();
+		int ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}
@@ -915,14 +916,14 @@ public class IRODSApi {
 	}
 
 	public static int rcReadCollection(RcComm comm, int handle, Reference<CollEnt_PI> output) throws IOException {
-		var input = new INT_PI();
+		INT_PI input = new INT_PI();
 		input.myInt = handle;
 		sendApiRequest(comm.sout, 713, input);
 		return receiveServerResponse(comm, CollEnt_PI.class, output, null);
 	}
 
 	public static int rcCloseCollection(RcComm comm, int handle) throws IOException {
-		var input = new INT_PI();
+		INT_PI input = new INT_PI();
 		input.myInt = handle;
 		sendApiRequest(comm.sout, 661, input);
 		return receiveServerResponse(comm, null, null, null);
@@ -957,8 +958,8 @@ public class IRODSApi {
 	public static int rcGetResourceInfoForOperation(RcComm comm, DataObjInp_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.sout, 10220, input);
-		var outputPI = new Reference<STR_PI>();
-		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
+		Reference<STR_PI> outputPI = new Reference<STR_PI>();
+		int ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}
@@ -995,8 +996,8 @@ public class IRODSApi {
 	public static int rcRuleExecSubmit(RcComm comm, RULE_EXEC_DEL_INP_PI input, Reference<String> output)
 			throws IOException {
 		sendApiRequest(comm.sout, 623, input);
-		var outputPI = new Reference<IRODS_STR_PI>();
-		var ec = receiveServerResponse(comm, IRODS_STR_PI.class, outputPI, null);
+		Reference<IRODS_STR_PI> outputPI = new Reference<IRODS_STR_PI>();
+		int ec = receiveServerResponse(comm, IRODS_STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}
@@ -1031,8 +1032,8 @@ public class IRODSApi {
 
 	public static int rcGetLibraryFeatures(RcComm comm, Reference<String> output) throws IOException {
 		sendApiRequest(comm.sout, 801);
-		var outputPI = new Reference<STR_PI>();
-		var ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
+		Reference<STR_PI> outputPI = new Reference<STR_PI>();
+		int ec = receiveServerResponse(comm, STR_PI.class, outputPI, null);
 		if (null != outputPI.value) {
 			output.value = outputPI.value.myStr;
 		}

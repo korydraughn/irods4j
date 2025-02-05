@@ -39,8 +39,8 @@ class TestRcGetLibraryFeatures {
 
 	@Test
 	void testRcGetLibraryFeatures() throws IOException, IRODSException {
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGetLibraryFeatures(comm, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGetLibraryFeatures(comm, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);

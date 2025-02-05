@@ -29,7 +29,7 @@ class TestPamPasswordAuthentication {
 		XmlUtil.enablePrettyPrinting();
 		JsonUtil.enablePrettyPrinting();
 
-		var options = new ConnectionOptions();
+		ConnectionOptions options = new ConnectionOptions();
 //		options.clientServerNegotiation = "CS_NEG_REQUIRE";
 //		options.sslProtocol = "TLSv1.2";
 //		options.sslTruststore = "/home/kory/eclipse-workspace/irods4j/truststore.jks";

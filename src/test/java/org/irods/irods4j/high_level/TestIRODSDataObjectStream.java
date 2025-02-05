@@ -11,7 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.logging.log4j.LogManager;
@@ -68,11 +70,11 @@ class TestIRODSDataObjectStream {
 
 	@Test
 	void testDataObjectStreamCapturesReplicaNumberAndReplicaToken() throws Exception {
-		var logicalPath = Paths
+		String logicalPath = Paths
 				.get("/", zone, "home", username, "testDataObjectStreamCapturesReplicaNumberAndReplicaToken.txt")
 				.toString();
 
-		var in = new IRODSDataObjectStream();
+		IRODSDataObjectStream in = new IRODSDataObjectStream();
 		in.open(comm, logicalPath, OpenFlags.O_CREAT | OpenFlags.O_WRONLY);
 		assertTrue(in.isOpen());
 
@@ -91,26 +93,25 @@ class TestIRODSDataObjectStream {
 
 	@Test
 	void testReadingAndWritingUsingInputOutputStreams() throws IOException, IRODSException {
-		var logicalPath = Paths.get("/", zone, "home", username, "testInputOutputStreamImplementation").toString();
+		String logicalPath = Paths.get("/", zone, "home", username, "testInputOutputStreamImplementation").toString();
 
 		try {
-			var truncate = true;
-			var append = false;
-			var data = """
-					This was written using an IRODSDataObjectOutputStream.
-					The data will be written on close due to the internal buffer not being filled.
-					""".getBytes(StandardCharsets.UTF_8);
+			boolean truncate = true;
+			boolean append = false;
+			byte[] data = ("This was written using an IRODSDataObjectOutputStream." +
+					"The data will be written on close due to the internal buffer not being filled.")
+					.getBytes(StandardCharsets.UTF_8);
 
 			// Create a new data object and write some data to it.
-			try (var out = new IRODSDataObjectOutputStream(comm, logicalPath, truncate, append)) {
+			try (IRODSDataObjectOutputStream out = new IRODSDataObjectOutputStream(comm, logicalPath, truncate, append)) {
 				out.write(data);
 				assertTrue(out.isOpen());
 			}
 
 			// Read the data from the newly created data object.
-			try (var in = new IRODSDataObjectInputStream(comm, logicalPath)) {
+			try (IRODSDataObjectInputStream in = new IRODSDataObjectInputStream(comm, logicalPath)) {
 				assertTrue(in.isOpen());
-				var buffer = new byte[data.length];
+				byte[] buffer = new byte[data.length];
 				in.read(buffer);
 				assertArrayEquals(data, buffer);
 			}
@@ -121,33 +122,32 @@ class TestIRODSDataObjectStream {
 
 	@Test
 	void testReadingAndWritingUsingInputOutputStreamsAndVerySmallInternalBuffer() throws IOException, IRODSException {
-		var logicalPath = Paths.get("/", zone, "home", username,
+		String logicalPath = Paths.get("/", zone, "home", username,
 				"testReadingAndWritingUsingInputOutputStreamsAndVerySmallInternalBuffer").toString();
 
 		try {
 			// The buffer size used by the input/output streams. The size is intentionally
 			// small to trigger more network requests.
-			var internalBufferSize = 20;
+			int internalBufferSize = 20;
 
-			var truncate = true;
-			var append = false;
-			var data = """
-					This was written using an IRODSDataObjectOutputStream.
-					The data will be written on close due to the internal buffer not being filled.
-					""".getBytes(StandardCharsets.UTF_8);
+			boolean truncate = true;
+			boolean append = false;
+			byte[] data = ("This was written using an IRODSDataObjectOutputStream." +
+					"The data will be written on close due to the internal buffer not being filled.")
+					.getBytes(StandardCharsets.UTF_8);
 
 			// Create a new data object and write some data to it.
-			try (var out = new IRODSDataObjectOutputStream(internalBufferSize)) {
+			try (IRODSDataObjectOutputStream out = new IRODSDataObjectOutputStream(internalBufferSize)) {
 				out.open(comm, logicalPath, truncate, append);
 				assertTrue(out.isOpen());
 				out.write(data);
 			}
 
 			// Read the data from the newly created data object.
-			try (var in = new IRODSDataObjectInputStream(internalBufferSize)) {
+			try (IRODSDataObjectInputStream in = new IRODSDataObjectInputStream(internalBufferSize)) {
 				in.open(comm, logicalPath);
 				assertTrue(in.isOpen());
-				var buffer = new byte[data.length];
+				byte[] buffer = new byte[data.length];
 				in.read(buffer);
 				assertArrayEquals(data, buffer);
 			}
@@ -158,10 +158,10 @@ class TestIRODSDataObjectStream {
 
 	@Test
 	void testParallelTransferOverPort1247() throws Exception {
-		var logicalPath = Paths.get("/", zone, "home", username, "testParallelTransferOverPort1247.txt").toString();
-		var streamCount = 3;
+		String logicalPath = Paths.get("/", zone, "home", username, "testParallelTransferOverPort1247.txt").toString();
+		int streamCount = 3;
 
-		try (var connPool = new IRODSConnectionPool(streamCount)) {
+		try (IRODSConnectionPool connPool = new IRODSConnectionPool(streamCount)) {
 			connPool.start(host, port, new QualifiedUsername(username, zone), conn -> {
 				try {
 					IRODSApi.rcAuthenticateClient(conn, "native", password);
@@ -173,18 +173,18 @@ class TestIRODSDataObjectStream {
 
 			// Create the primary data stream. This stream must be closed last so that
 			// policy fires appropriately.
-			try (var stream1 = new IRODSDataObjectStream(); var conn1 = connPool.getConnection()) {
+			try (IRODSDataObjectStream stream1 = new IRODSDataObjectStream(); IRODSConnectionPool.PoolConnection conn1 = connPool.getConnection()) {
 				stream1.open(conn1.getRcComm(), logicalPath,
 						OpenFlags.O_CREAT | OpenFlags.O_WRONLY | OpenFlags.O_TRUNC);
 
 				// These are needed so that iRODS knows they are for the parallel transfer.
-				var replicaToken = stream1.getReplicaToken();
-				var replicaNumber = stream1.getReplicaNumber();
+				String replicaToken = stream1.getReplicaToken();
+				long replicaNumber = stream1.getReplicaNumber();
 
-				try (var stream2 = new IRODSDataObjectStream();
-						var stream3 = new IRODSDataObjectStream();
-						var conn2 = connPool.getConnection();
-						var conn3 = connPool.getConnection()) {
+				try (IRODSDataObjectStream stream2 = new IRODSDataObjectStream();
+					 IRODSDataObjectStream stream3 = new IRODSDataObjectStream();
+					 IRODSConnectionPool.PoolConnection conn2 = connPool.getConnection();
+					 IRODSConnectionPool.PoolConnection conn3 = connPool.getConnection()) {
 					// Open the secondary streams using the replica token and replica number from
 					// the primary stream.
 					stream2.open(conn2.getRcComm(), replicaToken, logicalPath, replicaNumber, OpenFlags.O_WRONLY);
@@ -196,11 +196,11 @@ class TestIRODSDataObjectStream {
 
 					// Write the bytes.
 
-					var threadPool = Executors.newFixedThreadPool(streamCount);
-					var threadExperiencedAnError = new AtomicBoolean();
+					ExecutorService threadPool = Executors.newFixedThreadPool(streamCount);
+					AtomicBoolean threadExperiencedAnError = new AtomicBoolean();
 
-					var future1 = threadPool.submit(() -> {
-						var buffer = new byte[100];
+					Future<?> future1 = threadPool.submit(() -> {
+						byte[] buffer = new byte[100];
 						Arrays.fill(buffer, (byte) 'A');
 						try {
 							stream1.write(buffer, 100);
@@ -209,8 +209,8 @@ class TestIRODSDataObjectStream {
 						}
 					});
 
-					var future2 = threadPool.submit(() -> {
-						var buffer = new byte[100];
+					Future<?> future2 = threadPool.submit(() -> {
+						byte[] buffer = new byte[100];
 						Arrays.fill(buffer, (byte) 'B');
 						try {
 							stream2.write(buffer, 100);
@@ -219,8 +219,8 @@ class TestIRODSDataObjectStream {
 						}
 					});
 
-					var future3 = threadPool.submit(() -> {
-						var buffer = new byte[100];
+					Future<?> future3 = threadPool.submit(() -> {
+						byte[] buffer = new byte[100];
 						Arrays.fill(buffer, (byte) 'C');
 						try {
 							stream3.write(buffer, 100);
@@ -239,7 +239,7 @@ class TestIRODSDataObjectStream {
 
 					// Instruct the secondary streams to not update the catalog or trigger policy on
 					// close.
-					var closeInstructions = new OnCloseSuccess();
+					OnCloseSuccess closeInstructions = new OnCloseSuccess();
 					closeInstructions.updateSize = false;
 					closeInstructions.updateStatus = false;
 					closeInstructions.computeChecksum = false;
@@ -254,21 +254,21 @@ class TestIRODSDataObjectStream {
 			// The primary stream is closed automatically using the default options. The
 			// default options to ".close()" update the replica's status, size, and trigger
 			// policy.
-			var dataSize = IRODSFilesystem.dataObjectSize(comm, logicalPath);
+			long dataSize = IRODSFilesystem.dataObjectSize(comm, logicalPath);
 			assertEquals(dataSize, 300);
 
 			// Read the contents of the data object and assert it is what we wrote.
-			try (var in = new IRODSDataObjectStream(); var conn1 = connPool.getConnection()) {
+			try (IRODSDataObjectStream in = new IRODSDataObjectStream(); IRODSConnectionPool.PoolConnection conn1 = connPool.getConnection()) {
 				in.open(conn1.getRcComm(), logicalPath, OpenFlags.O_RDONLY);
 
-				var byteArrayRef = new ByteArrayReference();
+				ByteArrayReference byteArrayRef = new ByteArrayReference();
 				byteArrayRef.data = new byte[300];
 				// Read the data.
-				var bytesRead = in.read(byteArrayRef, byteArrayRef.data.length);
+				int bytesRead = in.read(byteArrayRef, byteArrayRef.data.length);
 				assertEquals(bytesRead, byteArrayRef.data.length);
 
 				// Create a buffer containing the expected contents.
-				var expected = new byte[300];
+				byte[] expected = new byte[300];
 				Arrays.fill(expected, 0, 100, (byte) 'A');
 				Arrays.fill(expected, 100, 200, (byte) 'B');
 				Arrays.fill(expected, 200, 300, (byte) 'C');

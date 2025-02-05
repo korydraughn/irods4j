@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.common.JsonUtil;
@@ -208,7 +210,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			return;
 		}
 
-		var input = new HashMap<String, Object>();
+		HashMap<String, Object> input = new HashMap<String, Object>();
 		input.put("fd", fd);
 
 		if (null != onCloseSuccess) {
@@ -219,7 +221,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			input.put("preserve_replica_state_table", onCloseSuccess.preserveReplicaStateTable);
 		}
 
-		var ec = IRODSApi.rcReplicaClose(comm, JsonUtil.toJsonString(input));
+		int ec = IRODSApi.rcReplicaClose(comm, JsonUtil.toJsonString(input));
 		if (ec < 0) {
 			log.error("rcReplicaClose error");
 		}
@@ -245,7 +247,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 	public long seek(int offset, SeekDirection direction) throws IOException, IRODSException {
 		throwIfInvalidL1Descriptor(fd);
 
-		var input = new OpenedDataObjInp_PI();
+		OpenedDataObjInp_PI input = new OpenedDataObjInp_PI();
 		input.l1descInx = fd;
 		input.offset = offset;
 
@@ -263,9 +265,9 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			break;
 		}
 
-		var output = new Reference<FileLseekOut_PI>();
+		Reference<FileLseekOut_PI> output = new Reference<FileLseekOut_PI>();
 
-		var ec = IRODSApi.rcDataObjLseek(comm, input, output);
+		int ec = IRODSApi.rcDataObjLseek(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcDataObjLseek error");
 		}
@@ -290,11 +292,11 @@ public class IRODSDataObjectStream implements AutoCloseable {
 		throwIfInvalidL1Descriptor(fd);
 		throwIfInvalidBufferSize(buffer.data.length, count);
 
-		var input = new OpenedDataObjInp_PI();
+		OpenedDataObjInp_PI input = new OpenedDataObjInp_PI();
 		input.l1descInx = fd;
 		input.len = count;
 
-		var bytesRead = IRODSApi.rcDataObjRead(comm, input, buffer);
+		int bytesRead = IRODSApi.rcDataObjRead(comm, input, buffer);
 		if (bytesRead < 0) {
 			throw new IRODSException(bytesRead, "rcDataObjRead error");
 		}
@@ -319,13 +321,13 @@ public class IRODSDataObjectStream implements AutoCloseable {
 		throwIfInvalidL1Descriptor(fd);
 		throwIfInvalidBufferSize(buffer.length, count);
 
-		var input = new OpenedDataObjInp_PI();
+		OpenedDataObjInp_PI input = new OpenedDataObjInp_PI();
 		input.l1descInx = fd;
 		input.len = count;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 0;
 
-		var bytesWritten = IRODSApi.rcDataObjWrite(comm, input, buffer);
+		int bytesWritten = IRODSApi.rcDataObjWrite(comm, input, buffer);
 		if (bytesWritten < 0) {
 			throw new IRODSException(bytesWritten, "rcDataObjWrite error");
 		}
@@ -382,7 +384,7 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			throw new IllegalArgumentException("Logical path is null or empty");
 		}
 
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 		input.dataSize = -1;
 		input.createMode = 0600;
@@ -415,9 +417,9 @@ public class IRODSDataObjectStream implements AutoCloseable {
 			this.replicaToken = v;
 		});
 
-		var output = new Reference<String>();
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcReplicaOpen(comm, input, output);
+		int ec = IRODSApi.rcReplicaOpen(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcReplicaOpen error");
 		}
@@ -431,9 +433,9 @@ public class IRODSDataObjectStream implements AutoCloseable {
 		// Capture information from the L1 descriptor JSON payload.
 		// This information eases parallel transfer initialization.
 
-		var jm = JsonUtil.getJsonMapper();
-		var l1descInfo = jm.readTree(output.value);
-		var doi = l1descInfo.get("data_object_info");
+		ObjectMapper jm = JsonUtil.getJsonMapper();
+		JsonNode l1descInfo = jm.readTree(output.value);
+		JsonNode doi = l1descInfo.get("data_object_info");
 
 		if (-1 == this.replicaNumber) {
 			this.replicaNumber = doi.get("replica_number").asLong();

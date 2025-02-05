@@ -2,6 +2,7 @@ package org.irods.irods4j.low_level.util;
 
 import java.io.IOException;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.irods.irods4j.low_level.protocol.packing_instructions.BinBytesBuf_PI;
 import org.irods.irods4j.low_level.protocol.packing_instructions.MsParam_PI;
 
@@ -14,14 +15,14 @@ public class MsParam_PI_Deserializer extends JsonDeserializer<MsParam_PI> {
 
 	@Override
 	public MsParam_PI deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
-		var v = new MsParam_PI();
-		var node = ctxt.readTree(p);
+		MsParam_PI v = new MsParam_PI();
+		JsonNode node = ctxt.readTree(p);
 
-		var targetNode = node.at("/label");
+		JsonNode targetNode = node.at("/label");
 		if (targetNode.isMissingNode()) {
 			throw new IOException("MsParam_PI deserialization error: Missing [label]");
 		}
-		var p1 = targetNode.traverse();
+		JsonParser p1 = targetNode.traverse();
 		p1.nextToken();
 		v.label = ctxt.readValue(p1, String.class);
 
@@ -40,7 +41,7 @@ public class MsParam_PI_Deserializer extends JsonDeserializer<MsParam_PI> {
 		p1 = targetNode.traverse();
 		p1.nextToken();
 		try {
-			var clazz = Class.forName("org.irods.irods4j.low_level.protocol.packing_instructions." + v.type);
+			Class<?> clazz = Class.forName("org.irods.irods4j.low_level.protocol.packing_instructions." + v.type);
 			v.inOutStruct = ctxt.readValue(p1, clazz);
 		} catch (ClassNotFoundException e) {
 			throw new IOException(e);

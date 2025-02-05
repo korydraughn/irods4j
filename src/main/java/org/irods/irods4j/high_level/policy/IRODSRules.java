@@ -12,13 +12,7 @@ import org.irods.irods4j.low_level.api.IRODSApi;
 import org.irods.irods4j.low_level.api.IRODSException;
 import org.irods.irods4j.low_level.api.IRODSKeywords;
 import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
-import org.irods.irods4j.low_level.protocol.packing_instructions.ExecCmdOut_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.ExecMyRuleInp_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.KeyValPair_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.MsParamArray_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.MsParam_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.RHostAddr_PI;
-import org.irods.irods4j.low_level.protocol.packing_instructions.STR_PI;
+import org.irods.irods4j.low_level.protocol.packing_instructions.*;
 
 /**
  * A class providing high-level functions for executing iRODS rule code against
@@ -57,7 +51,7 @@ public class IRODSRules {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new ExecMyRuleInp_PI();
+		ExecMyRuleInp_PI input = new ExecMyRuleInp_PI();
 		input.RHostAddr_PI = new RHostAddr_PI();
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 1;
@@ -68,21 +62,21 @@ public class IRODSRules {
 		input.MsParamArray_PI = new MsParamArray_PI();
 		input.MsParamArray_PI.paramLen = 0;
 
-		var output = new Reference<MsParamArray_PI>();
+		Reference<MsParamArray_PI> output = new Reference<MsParamArray_PI>();
 
-		var ec = IRODSApi.rcExecMyRule(comm, input, output);
+		int ec = IRODSApi.rcExecMyRule(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcExecMyRule error");
 		}
 
 		// The "good" output is stored in the RcComm's RErrMsg_PI.
-		var repInstances = new ArrayList<String>();
+		ArrayList<String> repInstances = new ArrayList<String>();
 		if (comm.rError.count > 0) {
-			var lines = comm.rError.RErrMsg_PI.get(0).msg.split("\n");
+			String[] lines = comm.rError.RErrMsg_PI.get(0).msg.split("\n");
 
 			// TODO Open an issue to make this better - i.e. return JSON or something.
 			// We start at 1 to skip the header line.
-			for (var i = 1; i < lines.length; ++i) {
+			for (int i = 1; i < lines.length; ++i) {
 				repInstances.add(lines[i].trim());
 			}
 		}
@@ -118,13 +112,13 @@ public class IRODSRules {
 			throw new IllegalArgumentException("Rule arguments is null");
 		}
 
-		var input = new ExecMyRuleInp_PI();
+		ExecMyRuleInp_PI input = new ExecMyRuleInp_PI();
 
 		// Unused, but required for proper execution.
 		input.RHostAddr_PI = new RHostAddr_PI();
 
 		// The rule text to execute.
-		var ruleTextSb = new StringBuilder("@external rule { ");
+		StringBuilder ruleTextSb = new StringBuilder("@external rule { ");
 		ruleTextSb.append(args.ruleText);
 		ruleTextSb.append(" }");
 		input.myRule = ruleTextSb.toString();
@@ -151,7 +145,7 @@ public class IRODSRules {
 					input.MsParamArray_PI.MsParam_PI = new ArrayList<>();
 				}
 
-				var mp = new MsParam_PI();
+				MsParam_PI mp = new MsParam_PI();
 				mp.label = name;
 				mp.type = "STR_PI";
 				mp.inOutStruct = new STR_PI();
@@ -163,25 +157,25 @@ public class IRODSRules {
 		// The variables to return from the server.
 		args.output.ifPresent(l -> input.outParamDesc = String.join("%", l));
 
-		var output = new Reference<MsParamArray_PI>();
+		Reference<MsParamArray_PI> output = new Reference<MsParamArray_PI>();
 
-		var ec = IRODSApi.rcExecMyRule(comm, input, output);
+		int ec = IRODSApi.rcExecMyRule(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcExecMyRule error");
 		}
 
-		var results = new HashMap<String, String>();
+		HashMap<String, String> results = new HashMap<String, String>();
 		for (int i = 0; i < output.value.paramLen; ++i) {
-			var msp = output.value.MsParam_PI.get(i);
+			MsParam_PI msp = output.value.MsParam_PI.get(i);
 			if ("STR_PI".equals(msp.type)) {
 				results.put(msp.label, ((STR_PI) msp.inOutStruct).myStr);
 			} else if ("ExecCmdOut_PI".equals(msp.type)) {
-				var ruleExecOut = (ExecCmdOut_PI) msp.inOutStruct;
+				ExecCmdOut_PI ruleExecOut = (ExecCmdOut_PI) msp.inOutStruct;
 
 				// Always fall back to returning empty strings when no data is available. This
 				// makes it easier for users of the library to write good code.
 
-				var bbbuf = ruleExecOut.BinBytesBuf_PI.get(0);
+				BinBytesBuf_PI bbbuf = ruleExecOut.BinBytesBuf_PI.get(0);
 				results.put("stdout", (bbbuf.buflen > 0) ? bbbuf.buf.trim() : "");
 
 				bbbuf = ruleExecOut.BinBytesBuf_PI.get(1);

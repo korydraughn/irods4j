@@ -75,14 +75,14 @@ public class IRODSTickets {
 
 	public static String createTicket(RcComm comm, TicketType ticketType, String logicalPath)
 			throws IOException, IRODSException {
-		var ticketName = genTicketName();
+		String ticketName = genTicketName();
 		createTicket(comm, ticketName, ticketType, logicalPath);
 		return ticketName;
 	}
 
 	public static String createTicket(AdminTag adminTag, RcComm comm, TicketType ticketType, String logicalPath)
 			throws IOException, IRODSException {
-		var ticketName = genTicketName();
+		String ticketName = genTicketName();
 		createTicket(adminTag, comm, ticketName, ticketType, logicalPath);
 		return ticketName;
 	}
@@ -150,13 +150,16 @@ public class IRODSTickets {
 		String et = null; // user, group, or host
 		String cv = null; // constraint value
 
-		if (constraint instanceof UserConstraint c) {
+		if (constraint instanceof UserConstraint) {
+			UserConstraint c = (UserConstraint) constraint;
 			et = "user";
 			cv = c.value;
-		} else if (constraint instanceof GroupConstraint c) {
+		} else if (constraint instanceof GroupConstraint) {
+			GroupConstraint c = (GroupConstraint) constraint;
 			et = "group";
 			cv = c.value;
-		} else if (constraint instanceof HostConstraint c) {
+		} else if (constraint instanceof HostConstraint) {
+			HostConstraint c = (HostConstraint) constraint;
 			et = "host";
 			cv = c.value;
 		} else {
@@ -183,13 +186,16 @@ public class IRODSTickets {
 		String et = null; // user, group, or host
 		String cv = null; // constraint value
 
-		if (constraint instanceof UserConstraint c) {
+		if (constraint instanceof UserConstraint) {
+			UserConstraint c = (UserConstraint) constraint;
 			et = "user";
 			cv = c.value;
-		} else if (constraint instanceof GroupConstraint c) {
+		} else if (constraint instanceof GroupConstraint) {
+			GroupConstraint c = (GroupConstraint) constraint;
 			et = "group";
 			cv = c.value;
-		} else if (constraint instanceof HostConstraint c) {
+		} else if (constraint instanceof HostConstraint) {
+			HostConstraint c = (HostConstraint) constraint;
 			et = "host";
 			cv = c.value;
 		} else {
@@ -222,13 +228,16 @@ public class IRODSTickets {
 		String property = null;
 		int cv = -1;
 
-		if (constraint instanceof UseCountConstraint c) {
+		if (constraint instanceof UseCountConstraint) {
+			UseCountConstraint c = (UseCountConstraint) constraint;
 			property = "uses";
 			cv = c.value;
-		} else if (constraint instanceof WriteCountToDataObjectConstraint c) {
+		} else if (constraint instanceof WriteCountToDataObjectConstraint) {
+			WriteCountToDataObjectConstraint c = (WriteCountToDataObjectConstraint) constraint;
 			property = "write-file";
 			cv = c.value;
-		} else if (constraint instanceof WriteByteCountConstraint c) {
+		} else if (constraint instanceof WriteByteCountConstraint) {
+			WriteByteCountConstraint c = (WriteByteCountConstraint) constraint;
 			property = "write-bytes";
 			cv = c.value;
 		} else {
@@ -259,13 +268,16 @@ public class IRODSTickets {
 		String property = null;
 		int cv = -1;
 
-		if (constraint instanceof UseCountConstraint c) {
+		if (constraint instanceof UseCountConstraint) {
+			UseCountConstraint c = (UseCountConstraint) constraint;
 			property = "uses";
 			cv = c.value;
-		} else if (constraint instanceof WriteCountToDataObjectConstraint c) {
+		} else if (constraint instanceof WriteCountToDataObjectConstraint) {
+			WriteCountToDataObjectConstraint c = (WriteCountToDataObjectConstraint) constraint;
 			property = "write-file";
 			cv = c.value;
-		} else if (constraint instanceof WriteByteCountConstraint c) {
+		} else if (constraint instanceof WriteByteCountConstraint) {
+			WriteByteCountConstraint c = (WriteByteCountConstraint) constraint;
 			property = "write-bytes";
 			cv = c.value;
 		} else {
@@ -299,17 +311,20 @@ public class IRODSTickets {
 			throw new IllegalArgumentException("Ticket constraint is null");
 		}
 
-		if (constraint instanceof UserConstraint c) {
+		if (constraint instanceof UserConstraint) {
+			UserConstraint c = (UserConstraint) constraint;
 			execTicketOp(comm, false, "mod", ticketName, "remove", "user", c.value, "");
-		} else if (constraint instanceof GroupConstraint c) {
+		} else if (constraint instanceof GroupConstraint) {
+			GroupConstraint c = (GroupConstraint) constraint;
 			execTicketOp(comm, false, "mod", ticketName, "remove", "group", c.value, "");
-		} else if (constraint instanceof HostConstraint c) {
+		} else if (constraint instanceof HostConstraint) {
+			HostConstraint c = (HostConstraint) constraint;
 			execTicketOp(comm, false, "mod", ticketName, "remove", "host", c.value, "");
-		} else if (constraint instanceof UseCountConstraint c) {
+		} else if (constraint instanceof UseCountConstraint) {
 			execTicketOp(comm, false, "mod", ticketName, "users", "0", "", "");
-		} else if (constraint instanceof WriteCountToDataObjectConstraint c) {
+		} else if (constraint instanceof WriteCountToDataObjectConstraint) {
 			execTicketOp(comm, false, "mod", ticketName, "write-file", "0", "", "");
-		} else if (constraint instanceof WriteByteCountConstraint c) {
+		} else if (constraint instanceof WriteByteCountConstraint) {
 			execTicketOp(comm, false, "mod", ticketName, "write-bytes", "0", "", "");
 		} else {
 			throw new IllegalArgumentException("Constraint not supported");
@@ -330,17 +345,20 @@ public class IRODSTickets {
 			throw new IllegalArgumentException("Ticket constraint is null");
 		}
 
-		if (constraint instanceof UserConstraint c) {
+		if (constraint instanceof UserConstraint) {
+			UserConstraint c = (UserConstraint) constraint;
 			execTicketOp(comm, true, "mod", ticketName, "remove", "user", c.value, "");
-		} else if (constraint instanceof GroupConstraint c) {
+		} else if (constraint instanceof GroupConstraint) {
+			GroupConstraint c = (GroupConstraint) constraint;
 			execTicketOp(comm, true, "mod", ticketName, "remove", "group", c.value, "");
-		} else if (constraint instanceof HostConstraint c) {
+		} else if (constraint instanceof HostConstraint) {
+			HostConstraint c = (HostConstraint) constraint;
 			execTicketOp(comm, true, "mod", ticketName, "remove", "host", c.value, "");
-		} else if (constraint instanceof UseCountConstraint c) {
+		} else if (constraint instanceof UseCountConstraint) {
 			execTicketOp(comm, true, "mod", ticketName, "users", "0", "", "");
-		} else if (constraint instanceof WriteCountToDataObjectConstraint c) {
+		} else if (constraint instanceof WriteCountToDataObjectConstraint) {
 			execTicketOp(comm, true, "mod", ticketName, "write-file", "0", "", "");
-		} else if (constraint instanceof WriteByteCountConstraint c) {
+		} else if (constraint instanceof WriteByteCountConstraint) {
 			execTicketOp(comm, true, "mod", ticketName, "write-bytes", "0", "", "");
 		} else {
 			throw new IllegalArgumentException("Constraint not supported");
@@ -363,7 +381,7 @@ public class IRODSTickets {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new TicketAdminInp_PI();
+		TicketAdminInp_PI input = new TicketAdminInp_PI();
 		input.arg1 = cmd;
 		input.arg2 = ticketNameOrId;
 		input.arg3 = arg1;
@@ -381,16 +399,16 @@ public class IRODSTickets {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var ec = IRODSApi.rcTicketAdmin(comm, input);
+		int ec = IRODSApi.rcTicketAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcTicketAdmin error");
 		}
 	}
 
 	private static String genTicketName() {
-		final var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-		var rnd = new SecureRandom();
-		var tsb = new StringBuilder();
+		final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		SecureRandom rnd = new SecureRandom();
+		StringBuilder tsb = new StringBuilder();
 
 		for (int i = 0; i < 15; ++i) {
 			tsb.append(chars.charAt(rnd.nextInt(chars.length())));

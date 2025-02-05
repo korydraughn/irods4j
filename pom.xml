@@ -5,7 +5,7 @@
 
 	<groupId>org.irods</groupId>
 	<artifactId>irods4j</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.0-java8</version>
 	<packaging>jar</packaging>
 
 	<name>irods4j</name>
@@ -41,7 +41,7 @@
 	</scm>
 
 	<properties>
-		<maven.compiler.release>17</maven.compiler.release>
+		<maven.compiler.release>8</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
 		<jackson.version>2.18.1</jackson.version>

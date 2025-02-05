@@ -63,47 +63,47 @@ class TestIRODSReplicas {
 
 	@Test
 	void testCalculateChecksumForReplicaAsAdminWithoutPermissionsOnDataObject() throws Exception {
-		var logicalPath = Paths.get("/", zone, "home", rodsuser.name, "testUpdateModificationTimeOfReplicaAsAdmin.txt")
+		String logicalPath = Paths.get("/", zone, "home", rodsuser.name, "testUpdateModificationTimeOfReplicaAsAdmin.txt")
 				.toString();
-		var rodsuserPassword = "thepassword";
+		String rodsuserPassword = "thepassword";
 
 		try {
 			// Create a user.
 			IRODSUsers.addUser(conn.getRcComm(), rodsuser, UserType.RODSUSER, ZoneType.LOCAL);
 
 			// Set the user's password so we can authenticate as them.
-			var prop = new UserPasswordProperty();
+			UserPasswordProperty prop = new UserPasswordProperty();
 			prop.value = rodsuserPassword;
 			prop.requesterPassword = password;
 			IRODSUsers.modifyUser(conn.getRcComm(), rodsuser, prop);
 
 			// Create a new data object as the rodsuser.
-			try (var rodsuserConn = new IRODSConnection()) {
+			try (IRODSConnection rodsuserConn = new IRODSConnection()) {
 				rodsuserConn.connect(host, port, new QualifiedUsername(rodsuser.name, rodsuser.zone));
 				rodsuserConn.authenticate("native", prop.value);
 
-				try (var stream = new IRODSDataObjectStream()) {
+				try (IRODSDataObjectStream stream = new IRODSDataObjectStream()) {
 					stream.open(rodsuserConn.getRcComm(), logicalPath,
 							OpenFlags.O_CREAT | OpenFlags.O_WRONLY | OpenFlags.O_TRUNC);
 
-					var buffer = "Testing IRODSReplicas.lastWriteTime() implementation using irods4j."
+					byte[] buffer = "Testing IRODSReplicas.lastWriteTime() implementation using irods4j."
 							.getBytes(StandardCharsets.UTF_8);
 					stream.write(buffer, buffer.length);
 				}
 			}
 
 			// Show the admin cannot calculate a checksum if the admin flag isn't passed.
-			var ex = assertThrows(IRODSException.class, () -> IRODSReplicas.replicaChecksum(conn.getRcComm(),
+			IRODSException ex = assertThrows(IRODSException.class, () -> IRODSReplicas.replicaChecksum(conn.getRcComm(),
 					logicalPath, 0, IRODSReplicas.VerificationCalculation.ALWAYS));
 			assertEquals(ex.getErrorCode(), IRODSErrorCodes.CAT_NO_ACCESS_PERMISSION);
 
 			// Show the admin can calculate a checksum if the admin flag is passed.
-			var checksum = IRODSReplicas.replicaChecksum(IRODSReplicas.asAdmin, conn.getRcComm(), logicalPath, 0,
+			String checksum = IRODSReplicas.replicaChecksum(IRODSReplicas.asAdmin, conn.getRcComm(), logicalPath, 0,
 					IRODSReplicas.VerificationCalculation.ALWAYS);
 			log.debug("checksum = {}", checksum);
 			assertFalse(checksum.isEmpty());
 		} finally {
-			try (var rodsuserConn = new IRODSConnection()) {
+			try (IRODSConnection rodsuserConn = new IRODSConnection()) {
 				rodsuserConn.connect(host, port, new QualifiedUsername(rodsuser.name, rodsuser.zone));
 				rodsuserConn.authenticate("native", rodsuserPassword);
 				IRODSFilesystem.remove(rodsuserConn.getRcComm(), logicalPath, RemoveOptions.NO_TRASH);

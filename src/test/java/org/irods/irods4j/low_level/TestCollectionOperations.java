@@ -43,12 +43,12 @@ class TestCollectionOperations {
 	@Test
 	void testCreatingAndDeletingCollections() throws IOException {
 		// Create a new collection.
-		var input = new CollInpNew_PI();
+		CollInpNew_PI input = new CollInpNew_PI();
 		input.collName = Paths.get("/", zone, "home", username, "irods4j_test_coll").toString();
 		input.KeyValPair_PI = new KeyValPair_PI(); // Not necessary as shown through testing.
 		input.KeyValPair_PI.ssLen = 0; // Not necessary as shown through testing.
 
-		var ec = IRODSApi.rcCollCreate(comm, input);
+		int ec = IRODSApi.rcCollCreate(comm, input);
 		assertEquals(ec, 0);
 
 		// Delete the collection.
@@ -62,7 +62,7 @@ class TestCollectionOperations {
 		input.KeyValPair_PI.keyWord.add("recursiveOpr");
 		input.KeyValPair_PI.svalue.add("");
 
-		var output = new Reference<CollOprStat_PI>();
+		Reference<CollOprStat_PI> output = new Reference<CollOprStat_PI>();
 		ec = IRODSApi.rcRmColl(comm, input, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);

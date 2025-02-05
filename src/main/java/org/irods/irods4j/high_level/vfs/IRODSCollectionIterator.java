@@ -301,8 +301,8 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 
 		@Override
 		public CollectionEntry next() {
-			var row = iter.rows.get(iter.rowIndex);
-			var e = new CollectionEntry();
+			List<String> row = iter.rows.get(iter.rowIndex);
+			CollectionEntry e = new CollectionEntry();
 
 			if (iter.searchForCollections) {
 				e.dataId = row.get(0);

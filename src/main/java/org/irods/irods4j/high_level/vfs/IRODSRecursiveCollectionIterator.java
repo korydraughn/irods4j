@@ -102,7 +102,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 	 */
 	public IRODSRecursiveCollectionIterator(RcComm comm, String logicalPath, int rowsPerPage, CollectionOptions options)
 			throws IRODSFilesystemException, IOException, IRODSException {
-		var iter = new IRODSCollectionIterator(comm, logicalPath, rowsPerPage, options);
+		IRODSCollectionIterator iter = new IRODSCollectionIterator(comm, logicalPath, rowsPerPage, options);
 		curIter = (IRODSCollectionIterator.CollectionEntryIterator) iter.iterator();
 		stack = new Stack<>();
 		stack.push(iter);
@@ -215,8 +215,8 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 
 		@Override
 		public CollectionEntry next() {
-			var addedNewCollection = false;
-			var entry = iter.curIter.next();
+			boolean addedNewCollection = false;
+			CollectionEntry entry = iter.curIter.next();
 
 			if (entry.isCollection() && iter.recurse) {
 				IRODSCollectionIterator tmpIter = null;
@@ -228,7 +228,7 @@ public class IRODSRecursiveCollectionIterator implements Iterable<CollectionEntr
 				}
 
 				if (null != tmpIter) {
-					var iterator = tmpIter.iterator();
+					Iterator<CollectionEntry> iterator = tmpIter.iterator();
 
 					// Only add the collection if it contains entries.
 					if (iterator.hasNext()) {

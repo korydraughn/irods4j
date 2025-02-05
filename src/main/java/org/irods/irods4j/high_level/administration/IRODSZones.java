@@ -66,7 +66,7 @@ public class IRODSZones {
 			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "zone";
 		input.arg2 = zoneName;
@@ -74,7 +74,7 @@ public class IRODSZones {
 		input.arg4 = (null == options.connectionInfo) ? "" : options.connectionInfo;
 		input.arg5 = (null == options.comment) ? "" : options.comment;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -89,12 +89,12 @@ public class IRODSZones {
 			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "rm";
 		input.arg1 = "zone";
 		input.arg2 = zoneName;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -114,8 +114,9 @@ public class IRODSZones {
 			throw new IllegalArgumentException("Zone property is null");
 		}
 
-		if (property instanceof ZoneNameProperty p) {
-			var input = new GeneralAdminInp_PI();
+		if (property instanceof ZoneNameProperty) {
+			ZoneNameProperty p = (ZoneNameProperty) property;
+			GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 			input.arg0 = "modify";
 
 			if (comm.clientUserZone.equals(zoneName)) {
@@ -129,46 +130,49 @@ public class IRODSZones {
 				input.arg4 = p.value;
 			}
 
-			var ec = IRODSApi.rcGeneralAdmin(comm, input);
+			int ec = IRODSApi.rcGeneralAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcGeneralAdmin error");
 			}
-		} else if (property instanceof ConnectionInfoProperty p) {
-			var input = new GeneralAdminInp_PI();
+		} else if (property instanceof ConnectionInfoProperty) {
+			ConnectionInfoProperty p = (ConnectionInfoProperty) property;
+			GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 			input.arg0 = "modify";
 			input.arg1 = "zone";
 			input.arg2 = zoneName;
 			input.arg3 = "conn";
 			input.arg4 = p.value;
 
-			var ec = IRODSApi.rcGeneralAdmin(comm, input);
+			int ec = IRODSApi.rcGeneralAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcGeneralAdmin error");
 			}
-		} else if (property instanceof CommentProperty p) {
-			var input = new GeneralAdminInp_PI();
+		} else if (property instanceof CommentProperty) {
+			CommentProperty p = (CommentProperty) property;
+			GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 			input.arg0 = "modify";
 			input.arg1 = "zone";
 			input.arg2 = zoneName;
 			input.arg3 = "comment";
 			input.arg4 = p.value;
 
-			var ec = IRODSApi.rcGeneralAdmin(comm, input);
+			int ec = IRODSApi.rcGeneralAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcGeneralAdmin error");
 			}
-		} else if (property instanceof ZoneCollectionAclProperty p) {
-			var perm = ZoneCollectionAcl.NULL == p.acl ? "null" : "read";
-			var zoneColl = "/" + zoneName;
+		} else if (property instanceof ZoneCollectionAclProperty) {
+			ZoneCollectionAclProperty p = (ZoneCollectionAclProperty) property;
+			String perm = ZoneCollectionAcl.NULL == p.acl ? "null" : "read";
+			String zoneColl = "/" + zoneName;
 
-			var input = new GeneralAdminInp_PI();
+			GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 			input.arg0 = "modify";
 			input.arg1 = "zonecollacl";
 			input.arg2 = perm;
 			input.arg3 = p.name;
 			input.arg4 = zoneColl;
 
-			var ec = IRODSApi.rcGeneralAdmin(comm, input);
+			int ec = IRODSApi.rcGeneralAdmin(comm, input);
 			if (ec < 0) {
 				throw new IRODSException(ec, "rcGeneralAdmin error");
 			}
@@ -186,19 +190,19 @@ public class IRODSZones {
 			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select ZONE_NAME where ZONE_NAME = '%s'", zoneName);
 //		input.zone = comm.clientUserZone;
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 
 		return !rows.isEmpty();
 	}
@@ -212,26 +216,26 @@ public class IRODSZones {
 			throw new IllegalArgumentException("Zone name is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String
 				.format("select ZONE_ID, ZONE_TYPE, ZONE_CONNECTION, ZONE_COMMENT where ZONE_NAME = '%s'", zoneName);
 //		input.zone = comm.clientUserZone;
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}
 
-		var row = rows.get(0);
-		var info = new ZoneInfo();
+		List<String> row = rows.get(0);
+		ZoneInfo info = new ZoneInfo();
 		info.name = zoneName;
 		info.id = Integer.parseInt(row.get(0));
 		info.type = "local".equals(row.get(1)) ? ZoneType.LOCAL : ZoneType.REMOTE;

@@ -51,7 +51,7 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(attrValue, "Metadata attribute value is null or empty");
 		attrUnits.ifPresent(v -> Preconditions.notNullOrEmpty(v, "Metadata attribute units is null or empty"));
 
-		var input = new ModAVUMetadataInp_PI();
+		ModAVUMetadataInp_PI input = new ModAVUMetadataInp_PI();
 		input.arg0 = op.value;
 		input.arg1 = isCollection ? "-C" : "-d";
 		input.arg2 = logicalPath;
@@ -68,7 +68,7 @@ public class IRODSMetadata {
 			input.KeyValPair_PI.svalue.add("");
 		}
 
-		var ec = IRODSApi.rcModAVUMetadata(comm, input);
+		int ec = IRODSApi.rcModAVUMetadata(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcModAVUMetadata error");
 		}
@@ -90,9 +90,9 @@ public class IRODSMetadata {
 	 */
 	public static void addMetadataToCollection(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.ADD;
-		final var isCollection = true;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.ADD;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -113,9 +113,9 @@ public class IRODSMetadata {
 	 */
 	public static void addMetadataToCollection(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.ADD;
-		final var isCollection = true;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.ADD;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -136,9 +136,9 @@ public class IRODSMetadata {
 	 */
 	public static void removeMetadataFromCollection(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.REMOVE;
-		final var isCollection = true;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.REMOVE;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -160,9 +160,9 @@ public class IRODSMetadata {
 	 */
 	public static void removeMetadataFromCollection(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.REMOVE;
-		final var isCollection = true;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.REMOVE;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -183,9 +183,9 @@ public class IRODSMetadata {
 	 */
 	public static void setMetadataOnCollection(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.SET;
-		final var isCollection = true;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.SET;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -206,9 +206,9 @@ public class IRODSMetadata {
 	 */
 	public static void setMetadataOnCollection(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.SET;
-		final var isCollection = true;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.SET;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -229,9 +229,9 @@ public class IRODSMetadata {
 	 */
 	public static void addMetadataToDataObject(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.ADD;
-		final var isCollection = true;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.ADD;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -252,9 +252,9 @@ public class IRODSMetadata {
 	 */
 	public static void addMetadataToDataObject(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.ADD;
-		final var isCollection = true;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.ADD;
+		final boolean isCollection = true;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -275,9 +275,9 @@ public class IRODSMetadata {
 	 */
 	public static void removeMetadataFromDataObject(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.REMOVE;
-		final var isCollection = false;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.REMOVE;
+		final boolean isCollection = false;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -299,9 +299,9 @@ public class IRODSMetadata {
 	 */
 	public static void removeMetadataFromDataObject(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.REMOVE;
-		final var isCollection = false;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.REMOVE;
+		final boolean isCollection = false;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -322,9 +322,9 @@ public class IRODSMetadata {
 	 */
 	public static void setMetadataOnDataObject(RcComm comm, String logicalPath, String attrName, String attrValue,
 			Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = false;
-		final var op = OneOffMetadataOperation.SET;
-		final var isCollection = false;
+		final boolean asAdmin = false;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.SET;
+		final boolean isCollection = false;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -345,9 +345,9 @@ public class IRODSMetadata {
 	 */
 	public static void setMetadataOnDataObject(AdminTag adminTag, RcComm comm, String logicalPath, String attrName,
 			String attrValue, Optional<String> attrUnits) throws IOException, IRODSException {
-		final var asAdmin = true;
-		final var op = OneOffMetadataOperation.SET;
-		final var isCollection = false;
+		final boolean asAdmin = true;
+		final OneOffMetadataOperation op = OneOffMetadataOperation.SET;
+		final boolean isCollection = false;
 		doOneOffMetadataOperationOnLogicalPath(asAdmin, comm, op, isCollection, logicalPath, attrName, attrValue,
 				attrUnits);
 	}
@@ -361,7 +361,7 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(attrValue, "Metadata attribute value is null or empty");
 		attrUnits.ifPresent(v -> Preconditions.notNullOrEmpty(v, "Metadata attribute units is null or empty"));
 
-		var input = new ModAVUMetadataInp_PI();
+		ModAVUMetadataInp_PI input = new ModAVUMetadataInp_PI();
 		input.arg0 = op.value;
 		input.arg1 = "-R";
 		input.arg2 = resourceName;
@@ -369,7 +369,7 @@ public class IRODSMetadata {
 		input.arg4 = attrValue;
 		input.arg5 = attrUnits.orElse("");
 
-		var ec = IRODSApi.rcModAVUMetadata(comm, input);
+		int ec = IRODSApi.rcModAVUMetadata(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcModAVUMetadata error");
 		}
@@ -450,7 +450,7 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(attrValue, "Metadata attribute value is null or empty");
 		attrUnits.ifPresent(v -> Preconditions.notNullOrEmpty(v, "Metadata attribute units is null or empty"));
 
-		var input = new ModAVUMetadataInp_PI();
+		ModAVUMetadataInp_PI input = new ModAVUMetadataInp_PI();
 		input.arg0 = op.value;
 		input.arg1 = "-u";
 		input.arg2 = userOrGroup;
@@ -458,7 +458,7 @@ public class IRODSMetadata {
 		input.arg4 = attrValue;
 		input.arg5 = attrUnits.orElse("");
 
-		var ec = IRODSApi.rcModAVUMetadata(comm, input);
+		int ec = IRODSApi.rcModAVUMetadata(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcModAVUMetadata error");
 		}
@@ -621,16 +621,16 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(logicalPath, "Logical path is null or empty");
 		Preconditions.greaterThanOrEqualToValue(operations.size(), 0, "Atomic metadata operations is null or empty");
 
-		var errorInfo = new AtomicMetadataOperationsResult();
+		AtomicMetadataOperationsResult errorInfo = new AtomicMetadataOperationsResult();
 
-		var inputStruct = new HashMap<String, Object>();
+		HashMap<String, Object> inputStruct = new HashMap<String, Object>();
 		inputStruct.put("admin_mode", asAdmin);
 		inputStruct.put("entity_name", logicalPath);
 		inputStruct.put("entity_type", entityType);
 		inputStruct.put("operations", operations);
 
-		var input = JsonUtil.toJsonString(inputStruct);
-		var output = new Reference<String>();
+		String input = JsonUtil.toJsonString(inputStruct);
+		Reference<String> output = new Reference<String>();
 
 		errorInfo.errorCode = IRODSApi.rcAtomicApplyMetadataOperations(comm, input, output);
 		if (errorInfo.errorCode < 0) {
@@ -739,16 +739,16 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(resourceName, "Resource name is null or empty");
 		Preconditions.greaterThanOrEqualToValue(operations.size(), 0, "Atomic metadata operations is empty");
 
-		var errorInfo = new AtomicMetadataOperationsResult();
+		AtomicMetadataOperationsResult errorInfo = new AtomicMetadataOperationsResult();
 
-		var inputStruct = new HashMap<String, Object>();
+		HashMap<String, Object> inputStruct = new HashMap<String, Object>();
 		inputStruct.put("admin_mode", false);
 		inputStruct.put("entity_name", resourceName);
 		inputStruct.put("entity_type", "resource");
 		inputStruct.put("operations", operations);
 
-		var input = JsonUtil.toJsonString(inputStruct);
-		var output = new Reference<String>();
+		String input = JsonUtil.toJsonString(inputStruct);
+		Reference<String> output = new Reference<String>();
 
 		errorInfo.errorCode = IRODSApi.rcAtomicApplyMetadataOperations(comm, input, output);
 		if (errorInfo.errorCode < 0) {
@@ -779,16 +779,16 @@ public class IRODSMetadata {
 		Preconditions.notNullOrEmpty(userOrGroup, "User/Group name is null or empty");
 		Preconditions.greaterThanOrEqualToValue(operations.size(), 0, "Atomic metadata operations is empty");
 
-		var errorInfo = new AtomicMetadataOperationsResult();
+		AtomicMetadataOperationsResult errorInfo = new AtomicMetadataOperationsResult();
 
-		var inputStruct = new HashMap<String, Object>();
+		HashMap<String, Object> inputStruct = new HashMap<String, Object>();
 		inputStruct.put("admin_mode", false);
 		inputStruct.put("entity_name", userOrGroup);
 		inputStruct.put("entity_type", "user");
 		inputStruct.put("operations", operations);
 
-		var input = JsonUtil.toJsonString(inputStruct);
-		var output = new Reference<String>();
+		String input = JsonUtil.toJsonString(inputStruct);
+		Reference<String> output = new Reference<String>();
 
 		errorInfo.errorCode = IRODSApi.rcAtomicApplyMetadataOperations(comm, input, output);
 		if (errorInfo.errorCode < 0) {

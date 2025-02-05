@@ -301,7 +301,7 @@ public class IRODSConnectionPool implements AutoCloseable {
 	 */
 	public PoolConnection getConnection() {
 		for (int i = 0;; i = (i + 1) % pool.size()) {
-			var ctx = pool.get(i);
+			ConnectionContext ctx = pool.get(i);
 
 			if (ctx.lock.tryLock()) {
 				try {
@@ -387,15 +387,15 @@ public class IRODSConnectionPool implements AutoCloseable {
 
 		// Signals which indicate whether an unrecoverable error occurred while
 		// establishing a connection or authenticating with the server.
-		var connectFailed = new AtomicBoolean();
-		var authFailed = new AtomicBoolean();
+		AtomicBoolean connectFailed = new AtomicBoolean();
+		AtomicBoolean authFailed = new AtomicBoolean();
 
 		// Connect to the iRODS server and authenticate.
 		if (executor.isPresent()) {
-			var futures = new ArrayList<Future<?>>();
+			ArrayList<Future<?>> futures = new ArrayList<Future<?>>();
 			pool.forEach(ctx -> {
 				futures.add(executor.get().submit(() -> {
-					var conn = new IRODSConnection(connOptions);
+					IRODSConnection conn = new IRODSConnection(connOptions);
 					try {
 						conn.connect(host, port, clientUser);
 					} catch (Exception e) {
@@ -419,15 +419,15 @@ public class IRODSConnectionPool implements AutoCloseable {
 			});
 
 			// Wait for all tasks to finish.
-			for (var f : futures) {
+			for (Future<?> f : futures) {
 				try {
 					f.get();
 				} catch (InterruptedException | ExecutionException e) {
 				}
 			}
 		} else {
-			for (var i = 0; i < pool.size(); ++i) {
-				var conn = new IRODSConnection(connOptions);
+			for (int i = 0; i < pool.size(); ++i) {
+				IRODSConnection conn = new IRODSConnection(connOptions);
 				try {
 					conn.connect(host, port, clientUser);
 				} catch (Exception e) {
@@ -462,14 +462,14 @@ public class IRODSConnectionPool implements AutoCloseable {
 		// Use one connection to capture the time of the latest resource modification.
 		// This will be used to track when a connection should be refreshed. This helps
 		// with long-running agents.
-		var comm = pool.get(0).conn.getRcComm();
-		var latestRescMtimeRow = IRODSQuery.executeGenQuery2(comm, clientUser.getZone(),
+		RcComm comm = pool.get(0).conn.getRcComm();
+		List<String> latestRescMtimeRow = IRODSQuery.executeGenQuery2(comm, clientUser.getZone(),
 				"select no distinct RESC_MODIFY_TIME, RESC_MODIFY_TIME_MILLIS order by RESC_MODIFY_TIME desc, RESC_MODIFY_TIME_MILLIS desc limit 1")
 				.get(0);
-		var latestRescMtime = String.format("%s.%s", latestRescMtimeRow.get(0), latestRescMtimeRow.get(1));
-		var rescCountRow = IRODSQuery.executeGenQuery2(comm, clientUser.getZone(), "select count(RESC_ID) limit 1")
+		String latestRescMtime = String.format("%s.%s", latestRescMtimeRow.get(0), latestRescMtimeRow.get(1));
+		List<String> rescCountRow = IRODSQuery.executeGenQuery2(comm, clientUser.getZone(), "select count(RESC_ID) limit 1")
 				.get(0);
-		var rescCount = Integer.parseInt(rescCountRow.get(0));
+		int rescCount = Integer.parseInt(rescCountRow.get(0));
 		pool.forEach(ctx -> {
 			ctx.latestRescMTime = latestRescMtime;
 			ctx.rescCount = rescCount;
@@ -498,7 +498,7 @@ public class IRODSConnectionPool implements AutoCloseable {
 		}
 
 		if (poolOptions.numberOfSecondsBeforeConnectionRefresh.isPresent()) {
-			var elapsed = Instant.now().getEpochSecond() - ctx.ctime;
+			long elapsed = Instant.now().getEpochSecond() - ctx.ctime;
 			if (elapsed >= poolOptions.numberOfSecondsBeforeConnectionRefresh.get()) {
 				return false;
 			}
@@ -509,24 +509,24 @@ public class IRODSConnectionPool implements AutoCloseable {
 				// Capture whether the resources are in sync, or not. It's important that each
 				// resource property be updated to avoid unnecessary refreshes of the
 				// connection.
-				var inSync = true;
+				boolean inSync = true;
 
-				var comm = ctx.conn.getRcComm();
-				var zone = clientUser.getZone();
+				RcComm comm = ctx.conn.getRcComm();
+				String zone = clientUser.getZone();
 
-				var rescCountRow = IRODSQuery.executeGenQuery2(comm, zone, "select count(RESC_ID)").get(0);
+				List<String> rescCountRow = IRODSQuery.executeGenQuery2(comm, zone, "select count(RESC_ID)").get(0);
 				log.debug("Resource count = {}", rescCountRow.get(0));
-				var rescCount = Integer.parseInt(rescCountRow.get(0));
+				int rescCount = Integer.parseInt(rescCountRow.get(0));
 				if (rescCount != ctx.rescCount) {
 					inSync = false;
 					ctx.rescCount = rescCount;
 				}
 
 				if (rescCount > 0) {
-					var latestRescMtimeRow = IRODSQuery.executeGenQuery2(comm, zone,
+					List<String> latestRescMtimeRow = IRODSQuery.executeGenQuery2(comm, zone,
 							"select no distinct RESC_MODIFY_TIME, RESC_MODIFY_TIME_MILLIS order by RESC_MODIFY_TIME desc, RESC_MODIFY_TIME_MILLIS desc limit 1")
 							.get(0);
-					var latestRescMtime = String.format("%s.%s", latestRescMtimeRow.get(0), latestRescMtimeRow.get(1));
+					String latestRescMtime = String.format("%s.%s", latestRescMtimeRow.get(0), latestRescMtimeRow.get(1));
 					if (latestRescMtime.equals(ctx.latestRescMTime)) {
 						inSync = false;
 						ctx.latestRescMTime = latestRescMtime;
@@ -559,7 +559,7 @@ public class IRODSConnectionPool implements AutoCloseable {
 	private void createNewConnection(ConnectionContext ctx) throws Exception {
 		ctx.conn.disconnect();
 
-		var newConn = new IRODSConnection(connOptions);
+		IRODSConnection newConn = new IRODSConnection(connOptions);
 		newConn.connect(host, port, clientUser);
 
 		if (!authenticator.apply(newConn.getRcComm())) {

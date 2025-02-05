@@ -1,6 +1,7 @@
 package org.irods.irods4j.high_level.vfs;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -92,13 +93,13 @@ public class IRODSFilesystem {
 		throwIfPathLengthExceedsLimit(from);
 		throwIfPathLengthExceedsLimit(to);
 
-		var fromStatus = status(comm, from);
+		ObjectStatus fromStatus = status(comm, from);
 		if (!exists(fromStatus)) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.OBJ_PATH_DOES_NOT_EXIST, from,
 					"From/Source path does not exist");
 		}
 
-		var toStatus = status(comm, to);
+		ObjectStatus toStatus = status(comm, to);
 		if (exists(toStatus) && equivalent(comm, from, to)) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.SAME_SRC_DEST_PATHS_ERR, to,
 					"Paths identify the same object");
@@ -124,8 +125,8 @@ public class IRODSFilesystem {
 			}
 
 			if (isCollection(toStatus)) {
-				var objectName = Paths.get(from).getFileName().toString();
-				var toPath = Paths.get(to, objectName).toString();
+				String objectName = Paths.get(from).getFileName().toString();
+				String toPath = Paths.get(to, objectName).toString();
 				copyDataObject(comm, from, toPath, copyOptions);
 				return;
 			}
@@ -140,9 +141,9 @@ public class IRODSFilesystem {
 					}
 				}
 
-				for (var e : new IRODSCollectionIterator(comm, from)) {
-					var objectName = Paths.get(e.path).getFileName().toString();
-					var toPath = Paths.get(to, objectName).toString();
+				for (CollectionEntry e : new IRODSCollectionIterator(comm, from)) {
+					String objectName = Paths.get(e.path).getFileName().toString();
+					String toPath = Paths.get(to, objectName).toString();
 					copy(comm, e.path, toPath, copyOptions | CopyOptions.IN_RECURSIVE_COPY);
 				}
 			}
@@ -194,22 +195,22 @@ public class IRODSFilesystem {
 					"From/Source path does not identify a data object", from);
 		}
 
-		var input = new DataObjCopyInp_PI();
+		DataObjCopyInp_PI input = new DataObjCopyInp_PI();
 		input.DataObjInp_PI = new DataObjInp_PI[] { new DataObjInp_PI(), new DataObjInp_PI() };
 
-		var srcInput = input.DataObjInp_PI[0];
+		DataObjInp_PI srcInput = input.DataObjInp_PI[0];
 		srcInput.objPath = from;
 //		srcInput.oprType = 10; // COPY_SRC - see dataObjInpOut.h
 		srcInput.KeyValPair_PI = new KeyValPair_PI();
 		srcInput.KeyValPair_PI.ssLen = 0;
 
-		var dstInput = input.DataObjInp_PI[1];
+		DataObjInp_PI dstInput = input.DataObjInp_PI[1];
 		dstInput.objPath = to;
 //		dstInput.oprType = 9; // COPY_DEST - see dataObjInpOut.h
 		dstInput.KeyValPair_PI = new KeyValPair_PI();
 		dstInput.KeyValPair_PI.ssLen = 0;
 
-		var s = status(comm, to);
+		ObjectStatus s = status(comm, to);
 		if (exists(s)) {
 			if (equivalent(comm, from, to)) {
 				throw new IRODSFilesystemException(IRODSErrorCodes.SAME_SRC_DEST_PATHS_ERR,
@@ -244,9 +245,9 @@ public class IRODSFilesystem {
 			}
 		}
 
-		var output = new Reference<TransferStat_PI>();
+		Reference<TransferStat_PI> output = new Reference<TransferStat_PI>();
 
-		var ec = IRODSApi.rcDataObjCopy(comm, input, output);
+		int ec = IRODSApi.rcDataObjCopy(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcDataObjCopy error", from, to);
 		}
@@ -290,10 +291,10 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path, "Path is null or empty");
 		throwIfPathLengthExceedsLimit(path);
 
-		var input = new CollInpNew_PI();
+		CollInpNew_PI input = new CollInpNew_PI();
 		input.collName = path;
 
-		var ec = IRODSApi.rcCollCreate(comm, input);
+		int ec = IRODSApi.rcCollCreate(comm, input);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcCollCreate error", path);
 		}
@@ -323,7 +324,7 @@ public class IRODSFilesystem {
 		throwIfPathLengthExceedsLimit(path);
 		throwIfPathLengthExceedsLimit(existingPath);
 
-		var s = status(comm, existingPath);
+		ObjectStatus s = status(comm, existingPath);
 
 		if (!isCollection(s)) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.INVALID_OBJECT_TYPE,
@@ -333,8 +334,8 @@ public class IRODSFilesystem {
 		createCollection(comm, path);
 
 		// TODO Use atomic ACLs API.
-		var usernameSb = new StringBuilder();
-		for (var perm : s.getPermissions()) {
+		StringBuilder usernameSb = new StringBuilder();
+		for (EntityPermission perm : s.getPermissions()) {
 			usernameSb.delete(0, usernameSb.length());
 			usernameSb.append(perm.name).append('#').append(perm.zone);
 			permissions(comm, path, usernameSb.toString(), perm.prms);
@@ -366,7 +367,7 @@ public class IRODSFilesystem {
 			return false;
 		}
 
-		var input = new CollInpNew_PI();
+		CollInpNew_PI input = new CollInpNew_PI();
 		input.collName = path;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 1;
@@ -423,9 +424,9 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path, "Path is null or empty");
 		throwIfPathLengthExceedsLimit(path);
 
-		var p = Paths.get(path);
-		var query = String.format("select COLL_ID where COLL_NAME = '%s'", p.getParent().toString());
-		var zone = extractZoneFromPath(path);
+		Path p = Paths.get(path);
+		String query = String.format("select COLL_ID where COLL_NAME = '%s'", p.getParent().toString());
+		String zone = extractZoneFromPath(path);
 
 		return !IRODSQuery.executeGenQuery2(comm, zone, query).isEmpty();
 	}
@@ -447,10 +448,10 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path, "Path is null or empty");
 		throwIfPathLengthExceedsLimit(path);
 
-		var p = Paths.get(path);
-		var query = String.format("select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s'",
+		Path p = Paths.get(path);
+		String query = String.format("select DATA_ID where COLL_NAME = '%s' and DATA_NAME = '%s'",
 				p.getParent().toString(), p.getFileName().toString());
-		var zone = extractZoneFromPath(path);
+		String zone = extractZoneFromPath(path);
 
 		return !IRODSQuery.executeGenQuery2(comm, zone, query).isEmpty();
 	}
@@ -473,7 +474,7 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path1, "Path 1 is null or empty");
 		throwIfNullOrEmpty(path1, "Path 2 is null or empty");
 
-		var p1Info = stat(comm, path1);
+		StatInfo p1Info = stat(comm, path1);
 
 		if (p1Info.error < 0) {
 			throw new IRODSFilesystemException(p1Info.error, "Stat error", path1);
@@ -482,7 +483,7 @@ public class IRODSFilesystem {
 		if (0 /* UNKNOWN_OBJ_T */ == p1Info.type) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.OBJ_PATH_DOES_NOT_EXIST, "Path 1 does not exist", path1);
 		}
-		var p2Info = stat(comm, path1);
+		StatInfo p2Info = stat(comm, path1);
 
 		if (p2Info.error < 0) {
 			throw new IRODSFilesystemException(p2Info.error, "Stat error", path2);
@@ -518,12 +519,12 @@ public class IRODSFilesystem {
 					"Path does not identify a data object", path);
 		}
 
-		var zone = extractZoneFromPath(path);
-		var p = Paths.get(path);
-		var query = String.format(
+		String zone = extractZoneFromPath(path);
+		Path p = Paths.get(path);
+		String query = String.format(
 				"select DATA_SIZE, DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_STATUS = '1'",
 				p.getParent().toString(), p.getFileName().toString());
-		var rows = IRODSQuery.executeGenQuery2(comm, zone, query);
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(comm, zone, query);
 
 		if (rows.isEmpty()) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.SYS_NO_GOOD_REPLICA, "No good replica available", path);
@@ -536,8 +537,8 @@ public class IRODSFilesystem {
 		long latestMtime = 0;
 		long size = 0;
 
-		for (var row : rows) {
-			var currentMtime = Long.parseLong(row.get(1));
+		for (List<String> row : rows) {
+			long currentMtime = Long.parseLong(row.get(1));
 			if (currentMtime > latestMtime) {
 				latestMtime = currentMtime;
 				size = Long.parseLong(row.get(0));
@@ -654,10 +655,10 @@ public class IRODSFilesystem {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
 
-		var query = String.format("select COLL_TYPE, COLL_INFO1, COLL_INFO2 where COLL_NAME = '%s'", path);
-		var zone = extractZoneFromPath(path);
+		String query = String.format("select COLL_TYPE, COLL_INFO1, COLL_INFO2 where COLL_NAME = '%s'", path);
+		String zone = extractZoneFromPath(path);
 
-		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+		for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return !row.get(0).isEmpty() && (!row.get(1).isEmpty() || !row.get(2).isEmpty());
 		}
 
@@ -682,7 +683,7 @@ public class IRODSFilesystem {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
 
-		var s = status(comm, path);
+		ObjectStatus s = status(comm, path);
 
 		if (!isCollection(s)) {
 			throw new IRODSFilesystemException(IRODSErrorCodes.CAT_NOT_A_DATAOBJ_AND_NOT_A_COLLECTION,
@@ -715,11 +716,11 @@ public class IRODSFilesystem {
 		throwIfNull(comm, "RcComm is null");
 		throwIfNullOrEmpty(path, "Path is null or empty");
 
-		var s = status(comm, path);
+		ObjectStatus s = status(comm, path);
 		String query = null;
 
 		if (isDataObject(s)) {
-			var p = Paths.get(path);
+			Path p = Paths.get(path);
 			// Fetch information for good replicas only.
 			query = String.format(
 					"select max(DATA_MODIFY_TIME) where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_STATUS = '1'",
@@ -731,9 +732,9 @@ public class IRODSFilesystem {
 					"Path does not identify a data object or collection", path);
 		}
 
-		var zone = extractZoneFromPath(path);
+		String zone = extractZoneFromPath(path);
 
-		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+		for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return Long.parseLong(row.get(0));
 		}
 
@@ -760,7 +761,7 @@ public class IRODSFilesystem {
 					path);
 		}
 
-		var input = new CollInpNew_PI();
+		CollInpNew_PI input = new CollInpNew_PI();
 		input.collName = path;
 		input.KeyValPair_PI = new KeyValPair_PI();
 		input.KeyValPair_PI.ssLen = 1;
@@ -769,7 +770,7 @@ public class IRODSFilesystem {
 		input.KeyValPair_PI.keyWord.add(IRODSKeywords.COLLECTION_MTIME);
 		input.KeyValPair_PI.svalue.add(String.format("%011d", newModifyTime));
 
-		var ec = IRODSApi.rcModColl(comm, input);
+		int ec = IRODSApi.rcModColl(comm, input);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcModColl error", path);
 		}
@@ -786,7 +787,7 @@ public class IRODSFilesystem {
 	 */
 	public static boolean remove(RcComm comm, String path, RemoveOptions removeOptions)
 			throws IOException, IRODSException {
-		var options = new ExtendedRemoveOptions();
+		ExtendedRemoveOptions options = new ExtendedRemoveOptions();
 		options.noTrash = (RemoveOptions.NO_TRASH == removeOptions);
 		options.recursive = false;
 		return removeImpl(comm, path, options);
@@ -814,7 +815,7 @@ public class IRODSFilesystem {
 	 */
 	public static void removeAll(RcComm comm, String path, RemoveOptions removeOptions)
 			throws IOException, IRODSException {
-		var options = new ExtendedRemoveOptions();
+		ExtendedRemoveOptions options = new ExtendedRemoveOptions();
 		options.noTrash = (RemoveOptions.NO_TRASH == removeOptions);
 		options.recursive = true;
 		removeImpl(comm, path, options);
@@ -844,7 +845,7 @@ public class IRODSFilesystem {
 	 */
 	public static void permissions(RcComm comm, String path, String userOrGroup, Permission prms)
 			throws IRODSFilesystemException, IOException {
-		final var addAdminFlag = false;
+		final boolean addAdminFlag = false;
 		setPermissions(addAdminFlag, comm, path, userOrGroup, prms);
 	}
 
@@ -862,7 +863,7 @@ public class IRODSFilesystem {
 	 */
 	public static void permissions(AdminTag adminTag, RcComm comm, String path, String userOrGroup, Permission prms)
 			throws IRODSFilesystemException, IOException {
-		final var addAdminFlag = true;
+		final boolean addAdminFlag = true;
 		setPermissions(addAdminFlag, comm, path, userOrGroup, prms);
 	}
 
@@ -878,7 +879,7 @@ public class IRODSFilesystem {
 	 * @since 0.1.0
 	 */
 	public static void enableInheritance(RcComm comm, String path, boolean enable) throws IOException, IRODSException {
-		final var addAdminFlag = false;
+		final boolean addAdminFlag = false;
 		setInheritance(addAdminFlag, comm, path, enable);
 	}
 
@@ -896,7 +897,7 @@ public class IRODSFilesystem {
 	 */
 	public static void enableInheritance(AdminTag adminTag, RcComm comm, String path, boolean enable)
 			throws IOException, IRODSException {
-		final var addAdminFlag = true;
+		final boolean addAdminFlag = true;
 		setInheritance(addAdminFlag, comm, path, enable);
 	}
 
@@ -910,12 +911,12 @@ public class IRODSFilesystem {
 //		var oldPathStat = status(comm, oldPath);
 //		var newPathStat = status(comm, newPath);
 
-		var input = new DataObjCopyInp_PI();
+		DataObjCopyInp_PI input = new DataObjCopyInp_PI();
 		input.DataObjInp_PI = new DataObjInp_PI[] { new DataObjInp_PI(), new DataObjInp_PI() };
 		input.DataObjInp_PI[0].objPath = oldPath;
 		input.DataObjInp_PI[1].objPath = newPath;
 
-		var ec = IRODSApi.rcDataObjRename(comm, input);
+		int ec = IRODSApi.rcDataObjRename(comm, input);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcDataObjRename error", oldPath, newPath);
 		}
@@ -941,12 +942,12 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path, "Path is null or empty");
 		throwIfPathLengthExceedsLimit(path);
 
-		var s = stat(comm, path);
+		StatInfo s = stat(comm, path);
 		if (s.error < 0) {
 			throw new IRODSFilesystemException(s.error, "Stat error");
 		}
 
-		var status = new ObjectStatus();
+		ObjectStatus status = new ObjectStatus();
 		status.setPermissions(s.prms);
 		status.setInheritance(s.inheritance);
 
@@ -1017,21 +1018,21 @@ public class IRODSFilesystem {
 					"Logical path does not point to a data object", path);
 		}
 
-		var fspath = Paths.get(path);
-		var query = String.format(
+		Path fspath = Paths.get(path);
+		String query = String.format(
 				"select DATA_CHECKSUM, DATA_MODIFY_TIME where COLL_NAME = '%s' and DATA_NAME = '%s' and DATA_REPL_STATUS = '1'",
 				fspath.getParent().toAbsolutePath(), fspath.getFileName());
-		var zone = extractZoneFromPath(path);
+		String zone = extractZoneFromPath(path);
 
-		var latestMtime = 0L;
+		long latestMtime = 0L;
 		String checksum = "";
 
 		// This implementation assumes that any good replica will always satisfy the
 		// requirement within the loop, therefore the first iteration always causes the
 		// checksum to be captured. The checksum object should be empty if and only if
 		// there are no good replicas.
-		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
-			var curMtime = Long.parseLong(row.get(1));
+		for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+			long curMtime = Long.parseLong(row.get(1));
 			if (curMtime > latestMtime) {
 				latestMtime = curMtime;
 				checksum = row.get(0);
@@ -1042,7 +1043,7 @@ public class IRODSFilesystem {
 	}
 
 	private static String extractZoneFromPath(String path) {
-		var p = Paths.get(path);
+		Path p = Paths.get(path);
 
 		if (!p.isAbsolute()) {
 			throw new IllegalArgumentException("Path is not absolute");
@@ -1127,11 +1128,11 @@ public class IRODSFilesystem {
 
 	private static List<EntityPermission> toEntityPermissionsList(RcComm comm, String path, int objectType)
 			throws IOException, IRODSException {
-		var perms = new ArrayList<EntityPermission>();
+		ArrayList<EntityPermission> perms = new ArrayList<EntityPermission>();
 
 		if (/* DATA_OBJ_T */ 1 == objectType) {
-			var zone = extractZoneFromPath(path);
-			var fspath = Paths.get(path);
+			String zone = extractZoneFromPath(path);
+			Path fspath = Paths.get(path);
 			// TODO Open issue for this GenQuery2 query. It uses the wrong table alias for
 			// DATA_ACCESS_USER_ZONE. The workaround is to use DATA_ACCESS_USER_ID and
 			// resolve the user name, user zone, and user type against it.
@@ -1150,11 +1151,11 @@ public class IRODSFilesystem {
 			// TODO THE WORKAROUND.
 
 			// First, get the user id and permissions on the data object.
-			var map = new HashMap<String, String>();
-			var query = String.format(
+			HashMap<String, String> map = new HashMap<String, String>();
+			String query = String.format(
 					"select DATA_ACCESS_USER_ID, DATA_ACCESS_PERM_NAME where COLL_NAME = '%s' and DATA_NAME = '%s'",
 					fspath.getParent().toString(), fspath.getFileName().toString());
-			for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+			for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 				map.put(row.get(0), row.get(1));
 			}
 
@@ -1162,8 +1163,8 @@ public class IRODSFilesystem {
 			query = String.format("select USER_ID, USER_NAME, USER_ZONE, USER_TYPE where USER_ID in ('%s')",
 					String.join("', '", map.keySet()));
 			log.debug("Query for data object permissions = [{}]", query);
-			for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
-				var ep = new EntityPermission();
+			for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+				EntityPermission ep = new EntityPermission();
 				ep.name = row.get(1);
 				ep.zone = row.get(2);
 				ep.prms = toPermissionEnum(map.get(row.get(0)));
@@ -1173,10 +1174,10 @@ public class IRODSFilesystem {
 		}
 
 		if (/* COLL_OBJ_T */ 2 == objectType) {
-			var zone = extractZoneFromPath(path);
-			var bindArgs = Arrays.asList(path);
+			String zone = extractZoneFromPath(path);
+			List<String> bindArgs = Arrays.asList(path);
 			IRODSQuery.executeSpecificQuery(comm, zone, "ShowCollAcls", bindArgs, row -> {
-				var ep = new EntityPermission();
+				EntityPermission ep = new EntityPermission();
 				ep.name = row.get(0);
 				ep.zone = row.get(1);
 				ep.prms = toPermissionEnum(row.get(2));
@@ -1194,9 +1195,9 @@ public class IRODSFilesystem {
 			return false;
 		}
 
-		var zone = extractZoneFromPath(path);
-		var query = String.format("select COLL_INHERITANCE where COLL_NAME = '%s'", path);
-		for (var row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
+		String zone = extractZoneFromPath(path);
+		String query = String.format("select COLL_INHERITANCE where COLL_NAME = '%s'", path);
+		for (List<String> row : IRODSQuery.executeGenQuery2(comm, zone, query)) {
 			return "1".equals(row.get(0));
 		}
 
@@ -1204,11 +1205,11 @@ public class IRODSFilesystem {
 	}
 
 	private static StatInfo stat(RcComm comm, String logicalPath) throws IOException, IRODSException {
-		var input = new DataObjInp_PI();
+		DataObjInp_PI input = new DataObjInp_PI();
 		input.objPath = logicalPath;
 
-		var output = new Reference<RodsObjStat_PI>();
-		var statInfo = new StatInfo();
+		Reference<RodsObjStat_PI> output = new Reference<RodsObjStat_PI>();
+		StatInfo statInfo = new StatInfo();
 
 		statInfo.error = IRODSApi.rcObjStat(comm, input, output);
 
@@ -1240,19 +1241,19 @@ public class IRODSFilesystem {
 					logicalPath);
 		}
 
-		var input = new ModAccessControlInp_PI();
+		ModAccessControlInp_PI input = new ModAccessControlInp_PI();
 		input.userName = "";
 		input.zone = "";
 		input.path = logicalPath;
 
-		var access = new StringBuilder();
+		StringBuilder access = new StringBuilder();
 		if (addAdminFlag) {
 			access.append("admin:");
 		}
 		access.append(enableInheritance ? "inherit" : "noinherit");
 		input.accessLevel = access.toString();
 
-		var ec = IRODSApi.rcModAccessControl(comm, input);
+		int ec = IRODSApi.rcModAccessControl(comm, input);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcModAccessControl error", logicalPath);
 		}
@@ -1267,18 +1268,18 @@ public class IRODSFilesystem {
 		String username = userOrGroup;
 		String zone = "";
 
-		var usernameParts = userOrGroup.split("#");
+		String[] usernameParts = userOrGroup.split("#");
 		if (2 == usernameParts.length) {
 			username = usernameParts[0];
 			zone = usernameParts[1];
 		}
 
-		var input = new ModAccessControlInp_PI();
+		ModAccessControlInp_PI input = new ModAccessControlInp_PI();
 		input.userName = username;
 		input.zone = zone;
 		input.path = logicalPath;
 
-		var access = new StringBuilder();
+		StringBuilder access = new StringBuilder();
 		if (addAdminFlag) {
 			access.append("admin:");
 		}
@@ -1318,7 +1319,7 @@ public class IRODSFilesystem {
 
 		input.accessLevel = access.toString();
 
-		var ec = IRODSApi.rcModAccessControl(comm, input);
+		int ec = IRODSApi.rcModAccessControl(comm, input);
 		if (ec < 0) {
 			throw new IRODSFilesystemException(ec, "rcModAccessControl error", logicalPath);
 		}
@@ -1338,14 +1339,14 @@ public class IRODSFilesystem {
 		throwIfNullOrEmpty(path, "Path is null or empty");
 		throwIfPathLengthExceedsLimit(path);
 
-		var s = status(comm, path);
+		ObjectStatus s = status(comm, path);
 
 		if (!exists(s)) {
 			return false;
 		}
 
 		if (isDataObject(s)) {
-			var input = new DataObjInp_PI();
+			DataObjInp_PI input = new DataObjInp_PI();
 			input.objPath = path;
 			input.oprType = removeOptions.unregister ? 26 /* UNREG_OPR */ : 0;
 
@@ -1362,7 +1363,7 @@ public class IRODSFilesystem {
 		}
 
 		if (isCollection(s)) {
-			var input = new CollInpNew_PI();
+			CollInpNew_PI input = new CollInpNew_PI();
 			input.collName = path;
 
 			if (removeOptions.noTrash) {
@@ -1389,7 +1390,7 @@ public class IRODSFilesystem {
 				input.KeyValPair_PI.svalue.add("");
 			}
 
-			var output = new Reference<CollOprStat_PI>();
+			Reference<CollOprStat_PI> output = new Reference<CollOprStat_PI>();
 
 			return IRODSApi.rcRmColl(comm, input, output) == 0;
 		}

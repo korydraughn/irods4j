@@ -43,38 +43,38 @@ class TestRcAtomicApplyMetadataOperations {
 
 	@Test
 	void testAtomicApplyMetadataOperations() throws IOException {
-		var logicalPath = Paths.get("/", zone, "home", username).toString();
-		var attrName = "irods4j::atomic_attr_name";
-		var attrValue = "irods4j::atomic_attr_value";
-		var attrUnits = "irods4j::atomic_attr_units";
+		String logicalPath = Paths.get("/", zone, "home", username).toString();
+		String attrName = "irods4j::atomic_attr_name";
+		String attrValue = "irods4j::atomic_attr_value";
+		String attrUnits = "irods4j::atomic_attr_units";
 
 		// Add some metadata to the user's home collection.
-		var op = new HashMap<String, Object>();
+		HashMap<String, Object> op = new HashMap<String, Object>();
 		op.put("operation", "add");
 		op.put("attribute", attrName);
 		op.put("value", attrValue);
 		op.put("units", attrUnits);
 
-		var ops = new ArrayList<Object>();
+		ArrayList<Object> ops = new ArrayList<Object>();
 		ops.add(op);
 
-		var inputStruct = new HashMap<String, Object>();
+		HashMap<String, Object> inputStruct = new HashMap<String, Object>();
 		inputStruct.put("entity_name", logicalPath);
 		inputStruct.put("entity_type", "collection");
 		inputStruct.put("operations", ops);
 		inputStruct.put("admin_mode", false);
 
-		var operations = JsonUtil.toJsonString(inputStruct);
-		var output = new Reference<String>();
+		String operations = JsonUtil.toJsonString(inputStruct);
+		Reference<String> output = new Reference<String>();
 
-		var ec = IRODSApi.rcAtomicApplyMetadataOperations(comm, operations, output);
+		int ec = IRODSApi.rcAtomicApplyMetadataOperations(comm, operations, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);
 		assertTrue("{}".equals(output.value.trim()));
 
 		// Show the metadata exists on the user's home collection.
-		var gq2Input = new Genquery2Input_PI();
+		Genquery2Input_PI gq2Input = new Genquery2Input_PI();
 		gq2Input.query_string = String.format(
 				"select META_COLL_ATTR_NAME, META_COLL_ATTR_VALUE, META_COLL_ATTR_UNITS where COLL_NAME = '%s'",
 				logicalPath);
@@ -84,7 +84,7 @@ class TestRcAtomicApplyMetadataOperations {
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);
-		var expectedString = String.format("[\"%s\",\"%s\",\"%s\"]", attrName, attrValue, attrUnits);
+		String expectedString = String.format("[\"%s\",\"%s\",\"%s\"]", attrName, attrValue, attrUnits);
 		assertTrue(output.value.contains(expectedString));
 
 		// Remove the metadata.

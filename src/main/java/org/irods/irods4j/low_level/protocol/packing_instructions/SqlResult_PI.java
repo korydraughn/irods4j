@@ -17,13 +17,13 @@ public class SqlResult_PI {
 
 	public static void main(String[] args) throws JsonProcessingException {
 		XmlMapper m = new XmlMapper();
-		var pi = new SqlResult_PI();
+		SqlResult_PI pi = new SqlResult_PI();
 		pi.attriInx = 3;
 		pi.reslen = 4;
 		pi.value = new ArrayList<>();
-        pi.value.add("Kory");
-        pi.value.add("Draughn");
-        pi.value.add("36");
+		pi.value.add("Kory");
+		pi.value.add("Draughn");
+		pi.value.add("36");
 		System.out.println(m.writeValueAsString(pi));
 	}
 

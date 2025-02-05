@@ -13,7 +13,7 @@ public class Version_PI {
 	public int cookie = 400;
 	
 	public static void main(String[] args) throws JsonProcessingException {
-		var m = new XmlMapper();
+		XmlMapper m = new XmlMapper();
 		System.out.println(m.writeValueAsString(new Version_PI()));
 	}
 

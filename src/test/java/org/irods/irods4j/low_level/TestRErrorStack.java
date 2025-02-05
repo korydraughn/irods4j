@@ -46,7 +46,7 @@ class TestRErrorStack {
 
 	@Test
 	void testRcCommCapturesRErrorInfo() throws Exception {
-		var ruleArgs = new RuleArguments();
+		RuleArguments ruleArgs = new RuleArguments();
 		ruleArgs.ruleText = "writeLine('stdout', 'missing syntax";
 		ruleArgs.input = Optional.empty();
 		ruleArgs.output = Optional.empty();

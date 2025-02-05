@@ -45,7 +45,7 @@ class TestRcGeneralAdmin {
 		String rescName = "irods4j_pt_0";
 
 		// Add resource.
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "resource";
 		input.arg2 = rescName;
@@ -69,8 +69,8 @@ class TestRcGeneralAdmin {
 		String rescName2 = "irods4j_pt_2";
 
 		// Add resources.
-		var input = new GeneralAdminInp_PI();
-		for (var rescName : new String[] { rescName1, rescName2 }) {
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
+		for (String rescName : new String[] { rescName1, rescName2 }) {
 			input.arg0 = "add";
 			input.arg1 = "resource";
 			input.arg2 = rescName;
@@ -82,7 +82,7 @@ class TestRcGeneralAdmin {
 		}
 
 		// Create a new connection so the resources can be seen/used.
-		var comm1 = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
+		RcComm comm1 = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
 				Optional.empty());
 		assertNotNull(comm1);
 		IRODSApi.rcAuthenticateClient(comm1, "native", password);
@@ -113,7 +113,7 @@ class TestRcGeneralAdmin {
 		IRODSApi.rcDisconnect(comm1);
 
 		// Remove resource.
-		for (var rescName : new String[] { rescName1, rescName2 }) {
+		for (String rescName : new String[] { rescName1, rescName2 }) {
 			input.arg0 = "rm";
 			input.arg1 = "resource";
 			input.arg2 = rescName;

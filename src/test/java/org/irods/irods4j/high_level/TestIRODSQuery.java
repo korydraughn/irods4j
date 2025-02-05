@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
@@ -56,14 +58,14 @@ class TestIRODSQuery {
 
 	@Test
 	void testIRODSQueryCorrectlyHandlesNonEmptyResultsets() throws Exception {
-		var rows = IRODSQuery.executeGenQuery2(conn.getRcComm(), "select COLL_NAME");
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(conn.getRcComm(), "select COLL_NAME");
 		assertNotNull(rows);
 		assertFalse(rows.isEmpty());
 	}
 
 	@Test
 	void testIRODSQueryCorrectlyHandlesEmptyResultsets() throws Exception {
-		var rows = IRODSQuery.executeGenQuery2(conn.getRcComm(),
+		List<List<String>> rows = IRODSQuery.executeGenQuery2(conn.getRcComm(),
 				"select COLL_NAME where COLL_NAME = 'produce_empty_resultset'");
 		assertNotNull(rows);
 		assertTrue(rows.isEmpty());
@@ -71,17 +73,17 @@ class TestIRODSQuery {
 
 	@Test
 	void testIRODSQueryReturnsColumnMappings() throws Exception {
-		var mappings = IRODSQuery.getColumnMappings(conn.getRcComm());
+		Map<String, Map<String, String>> mappings = IRODSQuery.getColumnMappings(conn.getRcComm());
 		assertNotNull(mappings);
 		assertTrue(mappings.containsKey("DATA_NAME"));
 
-		var column = mappings.get("DATA_NAME");
+		Map<String, String> column = mappings.get("DATA_NAME");
 		assertEquals(column.get("R_DATA_MAIN"), "data_name");
 	}
 
 	@Test
 	void testIRODSQueryReturnsGeneratedSQL() throws Exception {
-		var sql = IRODSQuery.getGeneratedSQL(conn.getRcComm(), "select COLL_NAME");
+		String sql = IRODSQuery.getGeneratedSQL(conn.getRcComm(), "select COLL_NAME");
 		assertNotNull(sql);
 		assertTrue(sql.contains("select "));
 		assertTrue(sql.contains(" R_COLL_MAIN t0 "));
@@ -89,16 +91,16 @@ class TestIRODSQuery {
 
 	@Test
 	void testIRODSQueryHandlesSpecificQueries() throws Exception {
-		var bindArgs = Arrays.asList(username);
+		List<String> bindArgs = Arrays.asList(username);
 
 		IRODSQuery.executeSpecificQuery(conn.getRcComm(), "listGroupsForUser", bindArgs, row -> {
 			// On a fresh iRODS install, we expect the "rods" user to be a member of the
 			// "public" group only.
 			assertEquals(row.size(), 2);
 
-			var sb = new StringBuilder();
+			StringBuilder sb = new StringBuilder();
 			sb.append('[');
-			for (var c = 0; c < row.size(); ++c) {
+			for (int c = 0; c < row.size(); ++c) {
 				if (c > 0) {
 					sb.append(", ");
 				}
@@ -118,7 +120,7 @@ class TestIRODSQuery {
 
 	@Test
 	void testIRODSQuerySupportsGenQuery1() throws IOException, IRODSException {
-		var input = new GenQuery1QueryArgs();
+		GenQuery1QueryArgs input = new GenQuery1QueryArgs();
 
 		// select COLL_NAME, COLL_ACCESS_USER_ID, COLL_ACCESS_NAME ...
 		input.addColumnToSelectClause(GenQuery1Columns.COL_COLL_NAME, GenQuery1SortOptions.ORDER_BY_DESC);
@@ -132,14 +134,14 @@ class TestIRODSQuery {
 		// Execute the query in tempZone.
 		input.addApiOption(IRODSKeywords.ZONE, zone);
 
-		var output = new StringBuilder();
+		StringBuilder output = new StringBuilder();
 
 		IRODSQuery.executeGenQuery1(conn.getRcComm(), input, row -> {
 			// Each row should contain 3 columns.
 			assertEquals(row.size(), 3);
 
 			output.append('[');
-			for (var c = 0; c < row.size(); ++c) {
+			for (int c = 0; c < row.size(); ++c) {
 				if (c > 0) {
 					output.append(", ");
 				}
@@ -152,7 +154,7 @@ class TestIRODSQuery {
 			return true;
 		});
 
-		var text = output.toString();
+		String text = output.toString();
 		log.debug("\n" + text);
 		assertTrue(text.contains("/" + zone + "/"));
 	}

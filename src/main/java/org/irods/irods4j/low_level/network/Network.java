@@ -18,9 +18,9 @@ public class Network {
 	private static final Logger log = LogManager.getLogger();
 	
 	public static void write(OutputStream out, MsgHeader_PI msgHeader) throws IOException {
-		var msg = XmlUtil.toXmlString(msgHeader);
+		String msg = XmlUtil.toXmlString(msgHeader);
 
-		var bbuf = ByteBuffer.allocate(4);
+		ByteBuffer bbuf = ByteBuffer.allocate(4);
 		bbuf.order(ByteOrder.BIG_ENDIAN);
 		bbuf.putInt(msg.length());
 
@@ -34,27 +34,27 @@ public class Network {
 	}
 
 	public static <T> void writeXml(OutputStream out, T object) throws IOException {
-		var msg = XmlUtil.toXmlString(object);
+		String msg = XmlUtil.toXmlString(object);
 		out.write(msg.getBytes());
 		log.debug("Wrote:\n{}", msg);
 	}
 
 	public static <T> void writeJson(OutputStream out, T object) throws IOException {
-		var msg = JsonUtil.toJsonString(object);
+		String msg = JsonUtil.toJsonString(object);
 		out.write(msg.getBytes());
 		log.debug("Wrote:\n{}", msg);
 	}
 
 	public static MsgHeader_PI readMsgHeader_PI(InputStream in) throws IOException {
-		var bbuf = ByteBuffer.allocate(4);
+		ByteBuffer bbuf = ByteBuffer.allocate(4);
 		bbuf.order(ByteOrder.BIG_ENDIAN);
 
-		var msgHeaderLengthBytes = in.readNBytes(4);
+		byte[] msgHeaderLengthBytes = readNBytes(in, 4);
 		bbuf.put(msgHeaderLengthBytes);
 		bbuf.flip(); // Flip so we can read from the buffer.
-		var msgHeaderLength = bbuf.getInt();
+		int msgHeaderLength = bbuf.getInt();
 
-		var msgHeaderBytes = in.readNBytes(msgHeaderLength);
+		byte[] msgHeaderBytes = readNBytes(in, msgHeaderLength);
 		if (log.isDebugEnabled()) {
 			log.debug("Received:\n{}", new String(msgHeaderBytes, StandardCharsets.UTF_8));
 		}
@@ -62,7 +62,7 @@ public class Network {
 	}
 
 	public static <T> T readObject(InputStream in, int size, Class<T> clazz) throws IOException {
-		var bytes = in.readNBytes(size);
+		byte[] bytes = readNBytes(in, size);
 		if (log.isDebugEnabled()) {
 			log.debug("Received:\n{}", new String(bytes, StandardCharsets.UTF_8));
 		}
@@ -70,7 +70,7 @@ public class Network {
 	}
 
 	public static byte[] readBytes(InputStream in, int size) throws IOException {
-		var bytes = in.readNBytes(size);
+		byte[] bytes = readNBytes(in, size);
 		if (log.isDebugEnabled()) {
 			log.debug("Received:\n{}", new String(bytes, StandardCharsets.UTF_8));
 		}
@@ -78,7 +78,7 @@ public class Network {
 	}
 
 	public static void readBytes(InputStream in, byte[] buffer, int size) throws IOException {
-		in.readNBytes(buffer, 0, size);
+		readNBytes(in, buffer, 0, size);
 	}
 
 	public static void writeBytes(OutputStream out, byte[] bytes) throws IOException {
@@ -87,6 +87,38 @@ public class Network {
 
 	public static void writeBytes(OutputStream out, byte[] bytes, int count) throws IOException {
 		out.write(bytes, 0, count);
+	}
+
+	// Java 8 equivalent of InputStream#readNBytes(byte[] buffer, int off, int len).
+	private static int readNBytes(InputStream in, byte[] buffer, int offset, int length) throws IOException {
+		int bytesRead = 0;
+		int read;
+
+		while (bytesRead < length && (read = in.read(buffer, offset + bytesRead, length - bytesRead)) != -1) {
+			bytesRead += read;
+		}
+
+		return bytesRead;
+	}
+
+	// Java 8 equivalent of InputStream#readNBytes(int len).
+	private static byte[] readNBytes(InputStream in, int size) throws IOException {
+		byte[] buffer = new byte[size];
+		int bytesRead = 0;
+		int read = 0;
+
+		while (bytesRead < size && (read = in.read(buffer, bytesRead, size - bytesRead)) != -1) {
+			bytesRead += read;
+		}
+
+		if (bytesRead < size) {
+			// Resize the array to the actual bytes read.
+			byte[] actualBytes = new byte[bytesRead];
+			System.arraycopy(buffer, 0, actualBytes, 0, bytesRead);
+			return actualBytes;
+		}
+
+		return buffer;
 	}
 
 }

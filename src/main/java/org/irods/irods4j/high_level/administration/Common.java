@@ -19,18 +19,18 @@ class Common {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = "select ZONE_NAME where ZONE_TYPE = 'local'";
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		return rows.get(0).get(0);
 	}
 

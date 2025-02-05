@@ -24,7 +24,7 @@ public class PamPasswordAuthPlugin extends AuthPlugin {
 
 	@Override
 	public JsonNode authClientStart(RcComm comm, JsonNode context) {
-		var resp = (ObjectNode) context.deepCopy();
+		ObjectNode resp = (ObjectNode) context.deepCopy();
 		resp.put(AUTH_NEXT_OPERATION, AUTH_CLIENT_AUTH_REQUEST);
 
 		// The proxy user's information is used for authentication because it covers
@@ -42,7 +42,7 @@ public class PamPasswordAuthPlugin extends AuthPlugin {
 	}
 
 	private JsonNode clientRequest(RcComm comm, JsonNode context) throws IOException, IRODSException {
-		var req = (ObjectNode) context.deepCopy();
+		ObjectNode req = (ObjectNode) context.deepCopy();
 		req.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_REQUEST);
 
 		// Unlike the C++ implementation, this library requires the user to connect
@@ -52,7 +52,7 @@ public class PamPasswordAuthPlugin extends AuthPlugin {
 			throw new IllegalStateException("SSL/TLS is required for PAM authentication");
 		}
 
-		var resp = request(comm, req);
+		JsonNode resp = request(comm, req);
 		((ObjectNode) resp).put(AUTH_NEXT_OPERATION, PERFORM_NATIVE_AUTH);
 
 		if (!resp.has("request_result")) {
@@ -66,14 +66,14 @@ public class PamPasswordAuthPlugin extends AuthPlugin {
 	}
 
 	private JsonNode performNativeAuth(RcComm comm, JsonNode context) throws Exception {
-		var resp = (ObjectNode) context.deepCopy();
+		ObjectNode resp = (ObjectNode) context.deepCopy();
 
 		// Remove the PAM password from the payload so it's not sent over the network.
 		resp.remove(AUTH_PASSWORD_KEY);
 
 		// Authenticate using the native authentication and the server generated
 		// password mapped to "request_result".
-		var input = JsonUtil.getJsonMapper().createObjectNode();
+		ObjectNode input = JsonUtil.getJsonMapper().createObjectNode();
 		input.put("password", resp.get("request_result").asText());
 		AuthManager.authenticateClient(comm, "native", input);
 

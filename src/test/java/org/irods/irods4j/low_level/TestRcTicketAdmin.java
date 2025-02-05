@@ -39,11 +39,11 @@ class TestRcTicketAdmin {
 
 	@Test
 	void testCreateAndDeleteTicket() throws IOException {
-		var ticketName = "irods4j_ticket";
-		var collection = Paths.get("/", zone, "home", username).toString();
+		String ticketName = "irods4j_ticket";
+		String collection = Paths.get("/", zone, "home", username).toString();
 
 		// Create a new ticket on the user's home collection.
-		var input = new TicketAdminInp_PI();
+		TicketAdminInp_PI input = new TicketAdminInp_PI();
 		input.arg1 = "create";
 		input.arg2 = ticketName;
 		input.arg3 = "read";
@@ -53,7 +53,7 @@ class TestRcTicketAdmin {
 		input.KeyValPair_PI = new KeyValPair_PI(); // Optional.
 		input.KeyValPair_PI.ssLen = 0;
 
-		var ec = IRODSApi.rcTicketAdmin(comm, input);
+		int ec = IRODSApi.rcTicketAdmin(comm, input);
 		assertEquals(ec, 0);
 
 		// Delete the ticket.

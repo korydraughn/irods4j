@@ -7,6 +7,7 @@ import java.util.Map;
 
 import javax.naming.NameNotFoundException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.common.JsonUtil;
@@ -59,7 +60,7 @@ public abstract class AuthPlugin {
 	}
 
 	public JsonNode execute(RcComm comm, String operation, JsonNode context) throws Exception {
-		var op = operations.get(operation);
+		AuthPluginOperation op = operations.get(operation);
 		if (null == op) {
 			throw new NameNotFoundException("Operation not supported: " + operation);
 		}
@@ -69,13 +70,13 @@ public abstract class AuthPlugin {
 	public abstract JsonNode authClientStart(RcComm comm, JsonNode context);
 
 	protected JsonNode request(RcComm comm, JsonNode msg) throws IOException, IRODSException {
-		var json = JsonUtil.toJsonString(msg);
-		var bbbuf = new BinBytesBuf_PI();
+		String json = JsonUtil.toJsonString(msg);
+		BinBytesBuf_PI bbbuf = new BinBytesBuf_PI();
 		bbbuf.buf = json;
 		bbbuf.buflen = json.length();
-		var msgbody = XmlUtil.toXmlString(bbbuf);
+		String msgbody = XmlUtil.toXmlString(bbbuf);
 
-		var hdr = new MsgHeader_PI();
+		MsgHeader_PI hdr = new MsgHeader_PI();
 		hdr.type = MsgHeader_PI.MsgType.RODS_API_REQ;
 		hdr.msgLen = msgbody.length();
 		hdr.intInfo = 110000; // New auth plugin framework API number.
@@ -85,7 +86,7 @@ public abstract class AuthPlugin {
 		comm.sout.flush();
 
 		// Read the message header from the server.
-		var mh = Network.readMsgHeader_PI(comm.sin);
+		MsgHeader_PI mh = Network.readMsgHeader_PI(comm.sin);
 		if (log.isDebugEnabled()) {
 			log.debug("Received MsgHeader_PI: {}", XmlUtil.toXmlString(mh));
 		}
@@ -100,7 +101,7 @@ public abstract class AuthPlugin {
 		// check above indicated success and rError information existed in the stream.
 
 		bbbuf = Network.readObject(comm.sin, mh.msgLen, BinBytesBuf_PI.class);
-		var jm = JsonUtil.getJsonMapper();
+		ObjectMapper jm = JsonUtil.getJsonMapper();
 		return jm.readTree(bbbuf.buf);
 	}
 

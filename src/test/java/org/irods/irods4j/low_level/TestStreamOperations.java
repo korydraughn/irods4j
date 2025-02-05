@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,10 +50,10 @@ class TestStreamOperations {
 
 	@Test
 	void testStreamOperations() throws IOException {
-		var logicalPath = Paths.get("/", zone, "home", username, "testStreamOperations.txt");
+		Path logicalPath = Paths.get("/", zone, "home", username, "testStreamOperations.txt");
 
 		// Open a data object for writing.
-		var openInput = new DataObjInp_PI();
+		DataObjInp_PI openInput = new DataObjInp_PI();
 		openInput.objPath = logicalPath.toString();
 		openInput.dataSize = -1;
 		openInput.createMode = 0600;
@@ -60,30 +61,30 @@ class TestStreamOperations {
 		openInput.KeyValPair_PI = new KeyValPair_PI();
 		openInput.KeyValPair_PI.ssLen = 0;
 
-		var l1descInfo = new Reference<String>();
-		var fd = IRODSApi.rcReplicaOpen(comm, openInput, l1descInfo);
+		Reference<String> l1descInfo = new Reference<String>();
+		int fd = IRODSApi.rcReplicaOpen(comm, openInput, l1descInfo);
 		assertTrue(fd >= 3);
 		assertNotNull(l1descInfo);
 		assertNotNull(l1descInfo.value);
 		assertFalse(l1descInfo.value.isEmpty());
 
 		// Write some data to the open replica.
-		var writeBuffer = "Hello, irods4j!\n".getBytes(StandardCharsets.UTF_8);
-		var writeInput = new OpenedDataObjInp_PI();
+		byte[] writeBuffer = "Hello, irods4j!\n".getBytes(StandardCharsets.UTF_8);
+		OpenedDataObjInp_PI writeInput = new OpenedDataObjInp_PI();
 		writeInput.l1descInx = fd;
 		writeInput.len = writeBuffer.length;
 		writeInput.KeyValPair_PI = new KeyValPair_PI();
 		writeInput.KeyValPair_PI.ssLen = 0;
-		
-		var bytesWritten = IRODSApi.rcDataObjWrite(comm, writeInput, writeBuffer);
+
+		int bytesWritten = IRODSApi.rcDataObjWrite(comm, writeInput, writeBuffer);
 		assertEquals(bytesWritten, writeInput.len);
 		assertEquals(bytesWritten, writeBuffer.length);
 
 		// Close the replica.
-		var closeOptions = new HashMap<String, Object>();
+		HashMap<String, Object> closeOptions = new HashMap<String, Object>();
 		closeOptions.put("fd", fd);
-		var closeInput = JsonUtil.toJsonString(closeOptions);
-		var ec = IRODSApi.rcReplicaClose(comm, closeInput);
+		String closeInput = JsonUtil.toJsonString(closeOptions);
+		int ec = IRODSApi.rcReplicaClose(comm, closeInput);
 		assertEquals(ec, 0);
 
 		// Open the data object again, but for reading.
@@ -102,13 +103,13 @@ class TestStreamOperations {
 		assertFalse(l1descInfo.value.isEmpty());
 
 		// Read some data from the open replica.
-		var readInput = new OpenedDataObjInp_PI();
+		OpenedDataObjInp_PI readInput = new OpenedDataObjInp_PI();
 		readInput.l1descInx = fd;
 		readInput.len = 8192;
 
-		var readBuffer = new ByteArrayReference();
+		ByteArrayReference readBuffer = new ByteArrayReference();
 		readBuffer.data = new byte[readInput.len];
-		var bytesRead = IRODSApi.rcDataObjRead(comm, readInput, readBuffer);
+		int bytesRead = IRODSApi.rcDataObjRead(comm, readInput, readBuffer);
 		assertTrue(bytesRead > 0);
 		assertTrue(Arrays.equals(Arrays.copyOf(readBuffer.data, bytesRead), writeBuffer));
 

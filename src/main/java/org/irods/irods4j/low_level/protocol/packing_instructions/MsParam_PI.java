@@ -23,10 +23,10 @@ public class MsParam_PI {
 	public static void main(String[] args) throws JsonProcessingException {
 		System.out.println("--- SERIALIZING OBJECT ---");
 
-		var inoutstruct = new STR_PI();
+		STR_PI inoutstruct = new STR_PI();
 		inoutstruct.myStr = "5";
 
-		var mp = new MsParam_PI();
+		MsParam_PI mp = new MsParam_PI();
 		mp.label = "*x";
 		mp.type = "STR_PI";
 		mp.inOutStruct = inoutstruct;
@@ -34,9 +34,9 @@ public class MsParam_PI {
 		mp.BinBytesBuf_PI.buf = "testing testing 1 2 3";
 		mp.BinBytesBuf_PI.buflen = mp.BinBytesBuf_PI.buf.length();
 
-		var xm = new XmlMapper();
+		XmlMapper xm = new XmlMapper();
 		xm.enable(SerializationFeature.INDENT_OUTPUT);
-		var v = xm.writeValueAsString(mp);
+		String v = xm.writeValueAsString(mp);
 		System.out.println(v);
 		
 		System.out.println("--- DESERIALIZING STRING ---");

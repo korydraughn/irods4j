@@ -41,27 +41,27 @@ class TestRcAtomicApplyAclOperations {
 
 	@Test
 	void testRcAtomicApplyAclOperations() throws IOException {
-		var logicalPath = Paths.get("/", zone, "home", username).toString();
+		String logicalPath = Paths.get("/", zone, "home", username).toString();
 
 		// Set the rodsadmin's permission to "write" on their home collection.
 		// Remember, they can always restore their permissions because they are
 		// a rodsadmin.
-		var op = new HashMap<String, Object>();
+		HashMap<String, Object> op = new HashMap<String, Object>();
 		op.put("entity_name", username);
 //		op.put("acl", "modify_object"); // TODO Bump to 4.3.3 since this isn't supported by 4.3.2.
 		op.put("acl", "read");
 
-		var ops = new ArrayList<Object>();
+		ArrayList<Object> ops = new ArrayList<Object>();
 		ops.add(op);
 
-		var inputStruct = new HashMap<String, Object>();
+		HashMap<String, Object> inputStruct = new HashMap<String, Object>();
 		inputStruct.put("logical_path", logicalPath);
 		inputStruct.put("operations", ops);
 
-		var operations = JsonUtil.toJsonString(inputStruct);
+		String operations = JsonUtil.toJsonString(inputStruct);
 		System.out.println(operations);
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcAtomicApplyAclOperations(comm, operations, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcAtomicApplyAclOperations(comm, operations, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);

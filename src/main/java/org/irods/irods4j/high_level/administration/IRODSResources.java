@@ -102,14 +102,14 @@ public class IRODSResources {
 			throw new IllegalArgumentException("RcComm is null");
 		}
 
-		var location = "";
+		String location = "";
 		if (null != info.hostName && !info.hostName.isEmpty()) {
 			if (null != info.vaultPath && !info.vaultPath.isEmpty()) {
 				location = String.format("%s:%s", info.hostName, info.vaultPath);
 			}
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "resource";
 		input.arg2 = info.resourceName;
@@ -118,7 +118,7 @@ public class IRODSResources {
 		input.arg5 = (null == info.contextString) ? "" : info.contextString;
 		input.arg6 = "";
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -133,13 +133,13 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "rm";
 		input.arg1 = "resource";
 		input.arg2 = resourceName;
 		input.arg3 = ""; // Dryrun flag (cannot be null).
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -159,14 +159,14 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Child resource name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "add";
 		input.arg1 = "childtoresc";
 		input.arg2 = parentResourceName;
 		input.arg3 = childResourceName;
 		input.arg4 = (null == contextString) ? "" : contextString;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -186,13 +186,13 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Child resource name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "rm";
 		input.arg1 = "childfromresc";
 		input.arg2 = parentResourceName;
 		input.arg3 = childResourceName;
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -207,19 +207,19 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource name is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select RESC_ID where RESC_NAME = '%s'", resourceName);
 //		input.zone = comm.clientUserZone;
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		return !rows.isEmpty();
 	}
 
@@ -233,28 +233,28 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource name is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select RESC_ID, RESC_TYPE_NAME, RESC_ZONE_NAME, RESC_HOSTNAME, "
 				+ "RESC_VAULT_PATH, RESC_STATUS, RESC_CONTEXT, RESC_COMMENT, RESC_INFO, "
 				+ "RESC_FREE_SPACE, RESC_FREE_SPACE_TIME, RESC_PARENT, RESC_CREATE_TIME, "
 				+ "RESC_MODIFY_TIME, RESC_MODIFY_TIME_MILLIS where RESC_NAME = '%s'", resourceName);
 //		input.zone = comm.clientUserZone;
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}
 
-		var row = rows.get(0);
-		var info = new ResourceInfo();
+		List<String> row = rows.get(0);
+		ResourceInfo info = new ResourceInfo();
 		info.name = resourceName;
 		info.id = row.get(0);
 		info.type = row.get(1);
@@ -292,38 +292,46 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource property is null");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "modify";
 		input.arg1 = "resource";
 		input.arg2 = resourceName;
 
-		if (property instanceof ResourceTypeProperty p) {
+		if (property instanceof ResourceTypeProperty) {
+			ResourceTypeProperty p = (ResourceTypeProperty) property;
 			input.arg3 = "type";
 			input.arg4 = p.value;
-		} else if (property instanceof HostNameProperty p) {
+		} else if (property instanceof HostNameProperty) {
+			HostNameProperty p = (HostNameProperty) property;
 			input.arg3 = "host";
 			input.arg4 = p.value;
-		} else if (property instanceof VaultPathProperty p) {
+		} else if (property instanceof VaultPathProperty) {
+			VaultPathProperty p = (VaultPathProperty) property;
 			input.arg3 = "path";
 			input.arg4 = p.value;
-		} else if (property instanceof ResourceStatusProperty p) {
+		} else if (property instanceof ResourceStatusProperty) {
+			ResourceStatusProperty p = (ResourceStatusProperty) property;
 			input.arg3 = "status";
 			input.arg4 = p.value;
-		} else if (property instanceof ResourceCommentsProperty p) {
+		} else if (property instanceof ResourceCommentsProperty) {
+			ResourceCommentsProperty p = (ResourceCommentsProperty) property;
 			input.arg3 = "comment";
 			input.arg4 = p.value;
-		} else if (property instanceof ResourceInfoProperty p) {
+		} else if (property instanceof ResourceInfoProperty) {
+			ResourceInfoProperty p = (ResourceInfoProperty) property;
 			input.arg3 = "info";
 			input.arg4 = p.value;
-		} else if (property instanceof FreeSpaceProperty p) {
+		} else if (property instanceof FreeSpaceProperty) {
+			FreeSpaceProperty p = (FreeSpaceProperty) property;
 			input.arg3 = "free_space";
 			input.arg4 = p.value;
-		} else if (property instanceof ContextStringProperty p) {
+		} else if (property instanceof ContextStringProperty) {
+			ContextStringProperty p = (ContextStringProperty) property;
 			input.arg3 = "context";
 			input.arg4 = p.value;
 		}
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -338,14 +346,14 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource name is null or empty");
 		}
 
-		var input = new GeneralAdminInp_PI();
+		GeneralAdminInp_PI input = new GeneralAdminInp_PI();
 		input.arg0 = "modify";
 		input.arg1 = "resource";
 		input.arg2 = resourceName;
 		input.arg3 = "rebalance";
 		input.arg4 = ""; // Required to avoid segfaults in server.
 
-		var ec = IRODSApi.rcGeneralAdmin(comm, input);
+		int ec = IRODSApi.rcGeneralAdmin(comm, input);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGeneralAdmin error");
 		}
@@ -360,19 +368,19 @@ public class IRODSResources {
 			throw new IllegalArgumentException("Resource Id is null or empty");
 		}
 
-		var input = new Genquery2Input_PI();
+		Genquery2Input_PI input = new Genquery2Input_PI();
 		input.query_string = String.format("select RESC_NAME where RESC_ID = '%s'", resourceId);
 //		input.zone = comm.clientUserZone;
 
-		var output = new Reference<String>();
-		var ec = IRODSApi.rcGenQuery2(comm, input, output);
+		Reference<String> output = new Reference<String>();
+		int ec = IRODSApi.rcGenQuery2(comm, input, output);
 		if (ec < 0) {
 			throw new IRODSException(ec, "rcGenQuery2 error");
 		}
 
-		var typeRef = new TypeReference<List<List<String>>>() {
+		TypeReference<List<List<String>>> typeRef = new TypeReference<List<List<String>>>() {
 		};
-		var rows = JsonUtil.fromJsonString(output.value, typeRef);
+		List<List<String>> rows = JsonUtil.fromJsonString(output.value, typeRef);
 		if (rows.isEmpty()) {
 			return Optional.empty();
 		}

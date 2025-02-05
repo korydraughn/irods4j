@@ -52,9 +52,9 @@ class TestRcExecMyRule {
 	@Test
 	void testRcExecMyRule() throws IOException {
 		XmlUtil.enablePrettyPrinting();
-		
-		var text = "Hello, irods4j! 1 + 1 =";
-		var input = new ExecMyRuleInp_PI();
+
+		String text = "Hello, irods4j! 1 + 1 =";
+		ExecMyRuleInp_PI input = new ExecMyRuleInp_PI();
 		// The rule text to execute.
 		input.myRule = String.format("@external rule { writeLine('stdout', '%s 2'); }", text);
 		input.RHostAddr_PI = new RHostAddr_PI();
@@ -71,21 +71,21 @@ class TestRcExecMyRule {
 		input.MsParamArray_PI = new MsParamArray_PI();
 		input.MsParamArray_PI.paramLen = 1;
 		input.MsParamArray_PI.MsParam_PI = new ArrayList<>();
-		var mp = new MsParam_PI();
+		MsParam_PI mp = new MsParam_PI();
 		mp.label = "*x";
 		mp.type = "STR_PI";
 		mp.inOutStruct = new STR_PI();
 		((STR_PI) mp.inOutStruct).myStr = "2";
 		input.MsParamArray_PI.MsParam_PI.add(mp);
-		
-		var output = new Reference<MsParamArray_PI>();
-		
-		var ec = IRODSApi.rcExecMyRule(comm, input, output);
+
+		Reference<MsParamArray_PI> output = new Reference<MsParamArray_PI>();
+
+		int ec = IRODSApi.rcExecMyRule(comm, input, output);
 		assertEquals(ec, 0);
 		assertNotNull(output);
 		assertNotNull(output.value);
-		
-		var ruleExecOut = (ExecCmdOut_PI) output.value.MsParam_PI.get(0).inOutStruct;
+
+		ExecCmdOut_PI ruleExecOut = (ExecCmdOut_PI) output.value.MsParam_PI.get(0).inOutStruct;
 		assertEquals(ruleExecOut.status, 0);
 		log.debug("stdout buffer = {}", ruleExecOut.BinBytesBuf_PI.get(0).buf);
 		log.debug("stdout length (whitespace trimmed) = {}", ruleExecOut.BinBytesBuf_PI.get(0).buf.trim().length());
