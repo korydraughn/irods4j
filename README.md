@@ -2,7 +2,7 @@
 
 **IMPORTANT: This project is not stable yet and may experience changes. Use of this library is encouraged.**
 
-A Java 17 client library designed for iRODS 4.3.2+.
+A Java 8 client library designed for iRODS 4.3.2+.
 
 This library provides a low-level API which exposes data types and functions seen in the iRODS C API. A high-level API is provided to ease use as well.
 
@@ -25,7 +25,7 @@ To use it, add the following to your pom.xml file.
 <dependency>
     <groupId>org.irods</groupId>
     <artifactId>irods4j</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.0-java8</version>
 </dependency>
 ```
 
