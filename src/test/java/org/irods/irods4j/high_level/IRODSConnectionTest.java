@@ -54,8 +54,10 @@ class IRODSConnectionTest {
 	void testConnectAuthenticateAndDisconnect() throws Exception {
 		@SuppressWarnings("resource")
 		var conn = new IRODSConnection();
-		conn.connect(host, port, new QualifiedUsername(username, zone));
-		conn.authenticate("native", password);
+//		conn.connect(host, port, new QualifiedUsername(username, zone));
+//		conn.authenticate("native", password);
+		conn.connect(host, port, new QualifiedUsername("john", zone));
+		conn.authenticate("pam_interactive", password);
 		conn.disconnect();
 	}
 

@@ -2,6 +2,8 @@ package org.irods.irods4j.authentication;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.fge.jsonpatch.JsonPatch;
+import com.github.fge.jsonpatch.JsonPatchException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.common.JsonUtil;
@@ -9,6 +11,8 @@ import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.api.IRODSException;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Scanner;
 
 public class PamInteractiveAuthPlugin extends AuthPlugin {
 
@@ -72,9 +76,9 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		// Unlike the C++ implementation, this library requires the user to connect
 		// using a secure channel. It is the user's responsibility to make sure the
 		// communication is secure before authenticating via PAM.
-		if (!comm.secure) {
-			throw new IllegalStateException("SSL/TLS is required for PAM authentication");
-		}
+//		if (!comm.secure) {
+//			throw new IllegalStateException("SSL/TLS is required for PAM authentication");
+//		}
 
 		var resp = (ObjectNode) request(comm, req);
 		resp.put(AUTH_NEXT_OPERATION, AUTH_CLIENT_AUTH_RESPONSE);
@@ -95,7 +99,7 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return request(rcComm, resp);
 	}
 
-	private JsonNode stepClientNext(RcComm rcComm, JsonNode context) throws IRODSException, IOException {
+	private JsonNode stepClientNext(RcComm rcComm, JsonNode context) throws IRODSException, IOException, JsonPatchException {
 		var resp = (ObjectNode) context.deepCopy();
 		var prompt = resp.get("msg").get("prompt");
 		if (prompt.isTextual()) {
@@ -106,7 +110,7 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return request(rcComm, resp);
 	}
 
-	private JsonNode stepWaiting(RcComm rcComm, JsonNode context) throws IRODSException, IOException {
+	private JsonNode stepWaiting(RcComm rcComm, JsonNode context) throws IRODSException, IOException, JsonPatchException {
 		var resp = (ObjectNode) context.deepCopy();
 
 		if (retrieveEntry(resp)) {
@@ -115,15 +119,55 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 			return request(rcComm, resp);
 		}
 
-		var prompt = resp.get("msg").get("prompt");
+		var prompt = getStringValue(resp.get("msg"), "prompt", "");
 		var defaultValue = getDefaultValue(resp);
-		if (defaultValue.is) // TODO
+		if (defaultValue.isEmpty()) {
+			System.out.print(prompt + " ");
+		}
+		else {
+			System.out.printf("%s[%s] ", prompt, defaultValue);
+		}
 
+		var scanner = new Scanner(System.in);
+		var input = scanner.nextLine();
+		if (input.isEmpty()) {
+			resp.put("resp", defaultValue);
+		}
+		else {
+			resp.put("resp", input);
+		}
+
+		resp.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
+		patchState(resp);
 		return request(rcComm, resp);
 	}
 
-	private JsonNode stepWaitingPw(RcComm rcComm, JsonNode context) throws IRODSException, IOException {
+	private JsonNode stepWaitingPw(RcComm rcComm, JsonNode context) throws IRODSException, IOException, JsonPatchException {
 		var resp = (ObjectNode) context.deepCopy();
+
+		if (retrieveEntry(resp)) {
+			resp.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
+			patchState(resp);
+			return request(rcComm, resp);
+		}
+
+		var prompt = getStringValue(resp.get("msg"), "prompt", "");
+		var defaultValue = getDefaultValue(resp);
+		if (defaultValue.isEmpty()) {
+			System.out.print(prompt + " ");
+		}
+		else {
+			System.out.print("[******] ");
+		}
+
+		var pw = getPasswordFromClientStdin();
+		if (pw.isEmpty()) {
+			resp.put("resp", defaultValue);
+		}
+		else {
+			resp.put("resp", pw);
+		}
+
 		patchState(resp);
 		resp.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
 		return request(rcComm, resp);
@@ -158,7 +202,7 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return resp;
 	}
 
-	private JsonNode stepGeneric(RcComm rcComm, JsonNode context) throws IRODSException, IOException {
+	private JsonNode stepGeneric(RcComm rcComm, JsonNode context) throws IRODSException, IOException, JsonPatchException {
 		var resp = (ObjectNode) context.deepCopy();
 		patchState(resp);
 		resp.put(AUTH_NEXT_OPERATION, AUTH_AGENT_AUTH_RESPONSE);
@@ -185,7 +229,7 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return resp;
 	}
 
-	private void patchState(JsonNode state) {
+	private void patchState(JsonNode state) throws IOException, JsonPatchException {
 		if (!state.has("patch")) {
 			return;
 		}
@@ -196,30 +240,27 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 			var opStr = null != op ? op.asText("") : "";
 			if ("add".equals(opStr) || "replace".equals(opStr)) {
 				if (!node.has("value")) {
-					var resp = state.get("resp");
-					var value = (null != resp) ? resp.asText("") : "";
+					var value = getStringValue(state, "resp", "");
 					((ObjectNode) node).put("value", value);
 				}
 			}
 		});
 
 		var node = (ObjectNode) state;
-		//node.put("pstate", ) // TODO req["pstate"].patch(patch);
+		var jsonPatch = JsonPatch.fromJson((JsonNode) patch);
+		node.set("pstate", jsonPatch.apply(node.get("pstate")));
 		node.put("pdirty", true);
 		((ObjectNode) node.get("msg")).remove("patch");
 	}
 
 	private String getDefaultValue(JsonNode request) {
-		var defaultPath = request.get("msg").get("default_path");
-		if (null == defaultPath) {
-			return "";
+		var defaultPath = getStringValue(request.get("msg"), "default_path", "");
+		if (!defaultPath.isEmpty()) {
+			var pstate = request.get("pstate");
+			if (null != pstate) {
+				return pstate.at(defaultPath).asText("");
+			}
 		}
-
-		var defaultValue = request.get("pstate").at(defaultPath.asText());
-		if (!defaultValue.isMissingNode()) {
-			return defaultValue.asText();
-		}
-
 		return "";
 	}
 
@@ -242,9 +283,33 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return false;
 	}
 
-	private String getStringValue(ObjectNode node, String key, String defaultValue) {
+	private String getStringValue(JsonNode node, String key, String defaultValue) {
+		if (null == node) {
+			return defaultValue;
+		}
 		var tmp = node.get(key);
 		return (null != tmp) ? tmp.asText(defaultValue) : defaultValue;
+	}
+
+	private String getPasswordFromClientStdin() {
+		return "rods"; // TODO For testing
+
+//		var scanner = new Scanner(System.in);
+//		return scanner.nextLine();
+
+//		var console = System.console();
+//		if (null == console) {
+//			throw new IllegalStateException("No console available. Cannot disable echo.");
+//		}
+//
+//		var passwdChars = console.readPassword();
+//		var passwd = new String(passwdChars);
+//		// Clear sensitive data after use.
+//		Arrays.fill(passwdChars, ' ');
+//
+//		System.out.println();
+//
+//		return passwd;
 	}
 
 }

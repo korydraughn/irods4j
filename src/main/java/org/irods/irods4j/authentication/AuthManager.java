@@ -24,6 +24,9 @@ public class AuthManager {
 		else if ("pam_password".equals(authScheme)) {
 			plugin = new PamPasswordAuthPlugin();
 		}
+		else if ("pam_interactive".equals(authScheme)) {
+			plugin = new PamInteractiveAuthPlugin();
+		}
 		else {
 			throw new IllegalArgumentException("Authentication scheme not supported: " + authScheme);
 		}
