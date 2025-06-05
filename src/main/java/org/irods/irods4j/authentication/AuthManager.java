@@ -3,6 +3,7 @@ package org.irods.irods4j.authentication;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.irods.irods4j.common.JsonUtil;
+import org.irods.irods4j.low_level.api.IRODSErrorCodes;
 import org.irods.irods4j.low_level.api.IRODSException;
 import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 
@@ -16,7 +17,8 @@ public class AuthManager {
 	public static void authenticateClient(RcComm comm, String authScheme, JsonNode context) throws Exception {
 		log.debug(">>> STARTING AUTHENTICATION");
 
-		// TODO Dynamically load plugin based on auth scheme.
+		// TODO Dynamically load plugin based on auth scheme or accept a type derived from AuthPlugin.
+		// TODO By accepting a type derived from AuthPlugin, we give the developer a way to tweak its behavior.
 		AuthPlugin plugin;
 		if ("native".equals(authScheme)) {
 			plugin = new NativeAuthPlugin();
@@ -49,24 +51,18 @@ public class AuthManager {
 			}
 
 			if (!resp.has("next_operation")) {
-				// TODO Throw exception. IllegalStateException perhaps?
-				// C++ throws SYS_INVALID_INPUT_PARAM and reports the following:
-				// - "authentication request missing [{}] parameter"
-				throw new IRODSException(-130000, "Authentication request missing [next_operation] parameter");
+				throw new IRODSException(IRODSErrorCodes.SYS_INVALID_INPUT_PARAM, "Authentication request missing [next_operation] parameter");
 			}
 
 			nextOp = resp.get("next_operation").asText();
 			if (nextOp.isEmpty() || "flow_complete".equals(nextOp)) {
-				// TODO Throw exception.
-				// C++ throws CAT_INVALID_AUTHENTICATION and reports the following:
-				// - "authentication flow completed without success"
-				throw new IRODSException(-826000, "Authentication flow completed without success");
-
-				// Why does "flow_complete" result in an exception?
+				throw new IRODSException(IRODSErrorCodes.CAT_INVALID_AUTHENTICATION, "Authentication flow completed without success");
 			}
 
 			req = resp;
 		}
+
+		log.debug(">>> AUTHENTICATION COMPLETE");
 	}
 
 }

@@ -11,7 +11,6 @@ import org.irods.irods4j.low_level.api.IRODSApi.RcComm;
 import org.irods.irods4j.low_level.api.IRODSException;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Scanner;
 
 public class PamInteractiveAuthPlugin extends AuthPlugin {
@@ -76,6 +75,7 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		// Unlike the C++ implementation, this library requires the user to connect
 		// using a secure channel. It is the user's responsibility to make sure the
 		// communication is secure before authenticating via PAM.
+		// TODO Consider including a way to disable this. Can be an option of the implementation.
 //		if (!comm.secure) {
 //			throw new IllegalStateException("SSL/TLS is required for PAM authentication");
 //		}
@@ -221,10 +221,13 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		input.put("password", resp.get("request_result").asText());
 		AuthManager.authenticateClient(comm, "native", input);
 
-		// If everything completed successfully, the flow is complete and we can
-		// consider the user to be logged in. The native auth flow was run and so
+		// If everything completed successfully, the flow is complete, and we can
+		// consider the user to be logged in. The native auth flow was run, and so
 		// we trust the result.
 		resp.put(AUTH_NEXT_OPERATION, AUTH_FLOW_COMPLETE);
+
+		// TODO The native auth plugin sets this on success. Do we really need to set this?
+//		comm.loggedIn = true;
 
 		return resp;
 	}
@@ -247,6 +250,8 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		});
 
 		var node = (ObjectNode) state;
+		// TODO JsonPatch is LGPL 3.0. Consider including license and/or note about this.
+		// TODO This is okay since we're using a JAR file.
 		var jsonPatch = JsonPatch.fromJson((JsonNode) patch);
 		node.set("pstate", jsonPatch.apply(node.get("pstate")));
 		node.put("pdirty", true);
@@ -295,7 +300,9 @@ public class PamInteractiveAuthPlugin extends AuthPlugin {
 		return "rods"; // TODO For testing
 
 //		var scanner = new Scanner(System.in);
-//		return scanner.nextLine();
+//		var input = scanner.next();
+//		scanner.close();
+//		return input;
 
 //		var console = System.console();
 //		if (null == console) {

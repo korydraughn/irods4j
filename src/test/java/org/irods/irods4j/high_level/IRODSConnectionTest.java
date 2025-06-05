@@ -57,7 +57,7 @@ class IRODSConnectionTest {
 //		conn.connect(host, port, new QualifiedUsername(username, zone));
 //		conn.authenticate("native", password);
 		conn.connect(host, port, new QualifiedUsername("john", zone));
-		conn.authenticate("pam_interactive", password);
+		conn.authenticate("pam_interactive", "");
 		conn.disconnect();
 	}
 
