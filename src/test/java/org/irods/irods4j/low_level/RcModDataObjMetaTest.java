@@ -41,6 +41,8 @@ class RcModDataObjMetaTest {
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
+		XmlUtil.enablePrettyPrinting();
+
 		comm = IRODSApi.rcConnect(host, port, username, zone, Optional.empty(), Optional.empty(), Optional.empty(),
 				Optional.empty());
 		assertNotNull(comm);
@@ -97,11 +99,12 @@ class RcModDataObjMetaTest {
 		IRODSApi.rcDataObjUnlink(comm, unlinkInput);
 
 		IRODSApi.rcDisconnect(comm);
+
+		XmlUtil.disablePrettyPrinting();
 	}
 
 	@Test
 	void testRcModDataObjMeta() throws IOException {
-		XmlUtil.enablePrettyPrinting();
 		String expectedChecksum = "irods4j:set_by_testRcModDataObjMeta";
 
 		// Add a bogus checksum to the test data object.
@@ -135,7 +138,6 @@ class RcModDataObjMetaTest {
 		String collName = LogicalPath.parentPath(dataObjPath);
 		String dataName = LogicalPath.objectName(dataObjPath);
 		assertTrue(output.value.contains(String.format("[\"%s\",\"%s\"]", collName, dataName)));
-
 	}
 
 }
