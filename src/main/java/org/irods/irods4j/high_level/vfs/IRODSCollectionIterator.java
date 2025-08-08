@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.irods.irods4j.common.Versioning;
 import org.irods.irods4j.high_level.catalog.IRODSQuery;
 import org.irods.irods4j.high_level.vfs.ObjectStatus.ObjectType;
 import org.irods.irods4j.low_level.api.IRODSException;
@@ -229,8 +230,14 @@ public class IRODSCollectionIterator implements Iterable<CollectionEntry> {
 
 			if (!iter.searchForCollections) {
 				iter.querySb.delete(0, iter.querySb.length());
+				if (Versioning.compareVersions(iter.comm.relVersion.substring(4), "4.3.4") > 0) {
+					iter.querySb.append("select distinct ");
+				}
+				else {
+					iter.querySb.append("select ");
+				}
 				iter.querySb.append(
-						"select DATA_ID, DATA_NAME, DATA_SIZE, DATA_CHECKSUM, DATA_MODE, DATA_CREATE_TIME, DATA_MODIFY_TIME where COLL_NAME = '");
+						"DATA_ID, DATA_NAME, DATA_SIZE, DATA_CHECKSUM, DATA_MODE, DATA_CREATE_TIME, DATA_MODIFY_TIME where COLL_NAME = '");
 				iter.querySb.append(iter.logicalPath);
 				iter.querySb.append("'");
 
