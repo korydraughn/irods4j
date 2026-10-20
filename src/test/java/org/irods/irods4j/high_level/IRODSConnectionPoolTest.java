@@ -20,7 +20,6 @@ import org.irods.irods4j.high_level.administration.IRODSUsers.UserType;
 import org.irods.irods4j.high_level.administration.IRODSZones.ZoneType;
 import org.irods.irods4j.high_level.connection.IRODSConnection;
 import org.irods.irods4j.high_level.connection.IRODSConnectionPool;
-import org.irods.irods4j.high_level.connection.IRODSConnectionPool.PoolConnection;
 import org.irods.irods4j.high_level.connection.QualifiedUsername;
 import org.irods.irods4j.high_level.io.IRODSDataObjectInputStream;
 import org.irods.irods4j.high_level.io.IRODSDataObjectOutputStream;
@@ -39,44 +38,36 @@ class IRODSConnectionPoolTest {
 	static String host = "localhost";
 	static int port = 1247;
 	static String zone = "tempZone";
-	static String username = "rods";
-	static String password = "rods";
-	static String clientUserName = "baloust";
-    static final String TEST_COLLECTION = "/%s/home/%s/test_proxy".formatted(zone, clientUserName);
-    static final String TEST_OBJECT = TEST_COLLECTION + "/secret_test.txt";
+
+	static String adminUsername = "rods";
+	static String adminPassword = "rods";
+
+	// Used to verify proxy connection support is functional.
+	static String clientUsername = "alice";
+	static final String clientUserDataObject = String.format("/%s/home/%s/some_data_object.txt", zone, clientUsername);
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
 		XmlUtil.enablePrettyPrinting();
 		JsonUtil.enablePrettyPrinting();
-		
-		// Create the user clientUser. 
+
+		// Create a rodsuser for testing proxied connections.
 		try (var conn = new IRODSConnection()) {
-			conn.connect(host, port, new QualifiedUsername(username, zone));
-			conn.authenticate(new NativeAuthPlugin(), password);
+			conn.connect(host, port, new QualifiedUsername(adminUsername, zone));
+			conn.authenticate(new NativeAuthPlugin(), adminPassword);
 			var comm = conn.getRcComm();
-			User user = new User(clientUserName, Optional.of(zone));
-			if (!IRODSUsers.exists(comm, user)) {
-				IRODSUsers.addUser(comm, user, UserType.RODSUSER, ZoneType.LOCAL);
-			}
+			var user = new User(clientUsername, Optional.of(zone));
+			IRODSUsers.addUser(comm, user, UserType.RODSUSER, ZoneType.LOCAL);
 		}
 
-		// Create the test file as clientUser so that he has READ permission.
-        try (var conn = new IRODSConnection()) {
-            conn.connect(host, port, new QualifiedUsername(username, zone), new QualifiedUsername(clientUserName, zone));
-            conn.authenticate(new NativeAuthPlugin(), password);
-            var comm = conn.getRcComm();
-
-            if (!IRODSFilesystem.isCollection(comm, TEST_COLLECTION)) {
-                IRODSFilesystem.createCollection(comm, TEST_COLLECTION, "/%s/home/%s".formatted(zone, clientUserName));
-            }
-
-            if (!IRODSFilesystem.isDataObject(comm, TEST_OBJECT)) {
-                try (var out = new IRODSDataObjectOutputStream(comm, TEST_OBJECT, true, false)) {
-                    out.write("données de test".getBytes(StandardCharsets.UTF_8));
-                }
-            }
-        }
+		// Create a data object using the rodsuser.
+		try (var conn = new IRODSConnection()) {
+			conn.connect(host, port, new QualifiedUsername(adminUsername, zone), new QualifiedUsername(clientUsername, zone));
+			conn.authenticate(new NativeAuthPlugin(), adminPassword);
+			try (var out = new IRODSDataObjectOutputStream(conn.getRcComm(), clientUserDataObject, true, false)) {
+				out.write("test data".getBytes(StandardCharsets.UTF_8));
+			}
+		}
 	}
 
 	@AfterAll
@@ -84,50 +75,28 @@ class IRODSConnectionPoolTest {
 		XmlUtil.disablePrettyPrinting();
 		JsonUtil.disablePrettyPrinting();
 
-		// Remove the test file.
+		// Remove the rodsuser's data object.
 		try (var conn = new IRODSConnection()) {
-			conn.connect(host, port, new QualifiedUsername(username, zone),
-					new QualifiedUsername(clientUserName, zone));
-			conn.authenticate(new NativeAuthPlugin(), username);
-			var comm = conn.getRcComm();
-
-			if (IRODSFilesystem.isDataObject(comm, TEST_OBJECT)) {
-				try {
-					IRODSFilesystem.remove(comm, TEST_OBJECT, RemoveOptions.NO_TRASH);
-				} catch (Exception e) {
-					// nothing to do
-				}
-			}
-
-			if (IRODSFilesystem.isCollection(comm, TEST_COLLECTION)) {
-				try {
-					IRODSFilesystem.remove(comm, TEST_COLLECTION, RemoveOptions.NO_TRASH);
-				} catch (Exception e) {
-					// nothing to do
-				}
-			}
+			conn.connect(host, port, new QualifiedUsername(adminUsername, zone), new QualifiedUsername(clientUsername, zone));
+			conn.authenticate(new NativeAuthPlugin(), adminUsername);
+			IRODSFilesystem.remove(conn.getRcComm(), clientUserDataObject, RemoveOptions.NO_TRASH);
 		}
 
-		// Remove the user clientUser. 
+		// Remove the rodsuser.
 		try (var conn = new IRODSConnection()) {
-			conn.connect(host, port, new QualifiedUsername(username, zone));
-			conn.authenticate(new NativeAuthPlugin(), username);
-			var comm = conn.getRcComm();
-			try {
-				User user = new User(clientUserName, Optional.of(zone));
-				IRODSUsers.removeUser(comm, user);
-			} catch (Exception e) {
-				// Ignore
-			}
+			conn.connect(host, port, new QualifiedUsername(adminUsername, zone));
+			conn.authenticate(new NativeAuthPlugin(), adminUsername);
+			var user = new User(clientUsername, Optional.of(zone));
+			IRODSUsers.removeUser(conn.getRcComm(), user);
 		}
 	}
 
 	@Test
 	void testSynchronousCreationOfPoolWithMultipleConnections() throws Exception {
 		try (var pool = new IRODSConnectionPool(10)) {
-			pool.start(host, port, new QualifiedUsername(username, zone), comm -> {
+			pool.start(host, port, new QualifiedUsername(adminUsername, zone), comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 
 					// Returning true lets the connection pool know that authentication was
 					// successful.
@@ -139,9 +108,11 @@ class IRODSConnectionPoolTest {
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			var homeCollection = String.format("/%s/home/%s", zone, adminUsername);
 			for (int i = 0; i < 30; ++i) {
 				try (var conn = pool.getConnection()) {
+					assertTrue(conn.isValid());
+					assertNotNull(conn.getRcComm());
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
 			}
@@ -155,9 +126,9 @@ class IRODSConnectionPoolTest {
 			var threadPool = Executors.newFixedThreadPool(5);
 
 			// Use the thread pool to speed up the connection process.
-			pool.start(threadPool, host, port, new QualifiedUsername(username, zone), comm -> {
+			pool.start(threadPool, host, port, new QualifiedUsername(adminUsername, zone), comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 
 					// Returning true lets the connection pool know that authentication was
 					// successful.
@@ -169,9 +140,11 @@ class IRODSConnectionPoolTest {
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			var homeCollection = String.format("/%s/home/%s", zone, adminUsername);
 			for (int i = 0; i < 30; ++i) {
 				try (var conn = pool.getConnection()) {
+					assertTrue(conn.isValid());
+					assertNotNull(conn.getRcComm());
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
 			}
@@ -184,9 +157,9 @@ class IRODSConnectionPoolTest {
 	void testBadHostResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
 			try (var pool = new IRODSConnectionPool(1)) {
-				pool.start("INVALID_HOST", port, new QualifiedUsername(username, zone), comm -> {
+				pool.start("INVALID_HOST", port, new QualifiedUsername(adminUsername, zone), comm -> {
 					try {
-						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 						return true;
 					} catch (Exception e) {
 						return false;
@@ -200,9 +173,9 @@ class IRODSConnectionPoolTest {
 	void testBadPortResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
 			try (var pool = new IRODSConnectionPool(1)) {
-				pool.start(host, 9000, new QualifiedUsername(username, zone), comm -> {
+				pool.start(host, 9000, new QualifiedUsername(adminUsername, zone), comm -> {
 					try {
-						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 						return true;
 					} catch (Exception e) {
 						return false;
@@ -216,9 +189,9 @@ class IRODSConnectionPoolTest {
 	void testBadAuthSchemeResultsInExceptionBeingThrown() throws Exception {
 		assertThrows(IllegalStateException.class, () -> {
 			try (var pool = new IRODSConnectionPool(1)) {
-				pool.start(host, port, new QualifiedUsername(username, zone), comm -> {
+				pool.start(host, port, new QualifiedUsername(adminUsername, zone), comm -> {
 					try {
-						IRODSApi.rcAuthenticateClient(comm, null, password);
+						IRODSApi.rcAuthenticateClient(comm, null, adminPassword);
 						return true;
 					} catch (Exception e) {
 						return false;
@@ -228,32 +201,25 @@ class IRODSConnectionPoolTest {
 		});
 	}
 
-	/**
-	 * Verifies that the new start() overload accepting a proxyUser and a
-	 * clientUser works in synchronous mode.
-	 *
-	 * The proxy user "rods" is a rodsadmin. The client user "rods" is used here
-	 * because it is the only user guaranteed to exist in the test environment.
-	 * In a real deployment, the client user would differ from the proxy.
-	 */
 	@Test
 	void testSynchronousPoolStartWithProxyUser() throws Exception {
-		var proxyUser = new QualifiedUsername(username, zone);
-		var clientUser = new QualifiedUsername(username, zone); // same user for the test
+		var proxyUser = new QualifiedUsername(adminUsername, zone);
+		var clientUser = new QualifiedUsername(clientUsername, zone); // same user for the test
 
 		try (var pool = new IRODSConnectionPool(5)) {
 			pool.start(host, port, proxyUser, clientUser, comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 					return true;
 				} catch (Exception e) {
 					return false;
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			var homeCollection = String.format("/%s/home/%s", zone, clientUsername);
 			for (int i = 0; i < 15; ++i) {
 				try (var conn = pool.getConnection()) {
+					assertTrue(conn.isValid());
 					assertNotNull(conn.getRcComm());
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
@@ -261,29 +227,26 @@ class IRODSConnectionPoolTest {
 		}
 	}
 
-	/**
-	 * Verifies that the new start() overload accepting a proxyUser and a
-	 * clientUser works in asynchronous mode.
-	 */
 	@Test
 	void testAsynchronousPoolStartWithProxyUser() throws Exception {
-		var proxyUser = new QualifiedUsername(username, zone);
-		var clientUser = new QualifiedUsername(username, zone);
+		var proxyUser = new QualifiedUsername(adminUsername, zone);
+		var clientUser = new QualifiedUsername(clientUsername, zone);
 
 		var threadPool = Executors.newFixedThreadPool(5);
 		try (var pool = new IRODSConnectionPool(10)) {
 			pool.start(threadPool, host, port, proxyUser, clientUser, comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 					return true;
 				} catch (Exception e) {
 					return false;
 				}
 			});
 
-			var homeCollection = String.format("/%s/home/%s", zone, username);
+			var homeCollection = String.format("/%s/home/%s", zone, clientUsername);
 			for (int i = 0; i < 15; ++i) {
 				try (var conn = pool.getConnection()) {
+					assertTrue(conn.isValid());
 					assertNotNull(conn.getRcComm());
 					assertTrue(IRODSFilesystem.isCollection(conn.getRcComm(), homeCollection));
 				}
@@ -293,39 +256,13 @@ class IRODSConnectionPoolTest {
 		}
 	}
 
-	/**
-	 * Verifies that the start(host, port, clientUser, callback) signature
-	 * still works.
-	 */
 	@Test
-	void testStartSignatureStillWorks() throws Exception {
-		try (var pool = new IRODSConnectionPool(3)) {
-			pool.start(host, port, new QualifiedUsername(username, zone), comm -> {
-				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
-					return true;
-				} catch (Exception e) {
-					return false;
-				}
-			});
-
-			try (var conn = pool.getConnection()) {
-				assertNotNull(conn.getRcComm());
-				assertTrue(conn.isValid());
-			}
-		}
-	}
-
-	/**
-	 * Verifies that a null proxyUser is rejected.
-	 */
-	@Test
-	void testNullProxyUserIsRejected() throws Exception {
+	void testNullProxyUserResultsInExceptionBeingThrown() {
 		assertThrows(IllegalArgumentException.class, () -> {
 			try (var pool = new IRODSConnectionPool(3)) {
-				pool.start(host, port, null, new QualifiedUsername(username, zone), comm -> {
+				pool.start(host, port, null, new QualifiedUsername(adminUsername, zone), comm -> {
 					try {
-						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 						return true;
 					} catch (Exception e) {
 						return false;
@@ -335,20 +272,16 @@ class IRODSConnectionPoolTest {
 		});
 	}
 
-	/**
-	 * Verifies that an invalid proxyUser host triggers an
-	 * IllegalStateException.
-	 */
 	@Test
-	void testBadHostWithProxyUserResultsInException() throws Exception {
-		var proxyUser = new QualifiedUsername(username, zone);
-		var clientUser = new QualifiedUsername(clientUserName, zone);
+	void testBadHostWithProxyUserResultsInExceptionBeingThrown() {
+		var proxyUser = new QualifiedUsername(adminUsername, zone);
+		var clientUser = new QualifiedUsername(clientUsername, zone);
 
 		assertThrows(IllegalStateException.class, () -> {
 			try (var pool = new IRODSConnectionPool(1)) {
 				pool.start("INVALID_HOST", port, proxyUser, clientUser, comm -> {
 					try {
-						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+						IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 						return true;
 					} catch (Exception e) {
 						return false;
@@ -358,96 +291,64 @@ class IRODSConnectionPoolTest {
 		});
 	}
 
-	/**
-	 * Verifies that a connection returned by the pool with proxy support is
-	 * usable and valid.
-	 */
 	@Test
-	void testPooledConnectionWithProxyIsValid() throws Exception {
-		var proxyUser = new QualifiedUsername(username, zone);
-		var clientUser = new QualifiedUsername(clientUserName, zone);
+	void testPoolOfProxyConnectionsHonorsClientPermissions() throws Exception {
+		var proxyUser = new QualifiedUsername(adminUsername, zone);
+		var clientUser = new QualifiedUsername(clientUsername, zone);
 
-		try (var pool = new IRODSConnectionPool(4)) {
+		try (var pool = new IRODSConnectionPool(2)) {
 			pool.start(host, port, proxyUser, clientUser, comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
 					return true;
 				} catch (Exception e) {
 					return false;
 				}
 			});
 
-			for (int i = 0; i < 10; ++i) {
-				try (PoolConnection conn = pool.getConnection()) {
-					assertTrue(conn.isValid(), "Connection should be valid");
-					assertNotNull(conn.getRcComm(), "RcComm should not be null");
-				}
+			try (var conn1 = pool.getConnection(); var conn2 = pool.getConnection()) {
+				// The following should succeed because all connections in the pool
+				// are viewed by the iRODS server as representing the client user and
+				// the client user owns the target data object.
+				assertDoesNotThrow(() -> {
+					try (var in = new IRODSDataObjectInputStream(conn1.getRcComm(), clientUserDataObject)) {
+						in.read();
+					}
+
+					try (var in = new IRODSDataObjectInputStream(conn2.getRcComm(), clientUserDataObject)) {
+						in.read();
+					}
+				});
 			}
 		}
 	}
-	
-	@Test
-	void testProxyUserEnforcesClientPermissions() throws Exception {
-	    var proxyUser = new QualifiedUsername(username, "tempZone");
-	    var clientUser = new QualifiedUsername(clientUserName, "tempZone");
-	    String objectPath = TEST_OBJECT;
 
-	    try (var pool = new IRODSConnectionPool(2)) {
-	        // Authentification with PROXY user (rods).
-	        pool.start(host, port, proxyUser, clientUser, comm -> {
-	            try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
-				} catch (Exception e) {
-					return false;
-				}
-	            return true;
-	        });
-
-	        try (var conn = pool.getConnection()) {
-	        	// The pool should have switched over to clientUser.
-	        	// clientUser has "read", so the read MUST SUCCEED.
-	            assertDoesNotThrow(() -> {
-	                try (var in = new IRODSDataObjectInputStream(conn.getRcComm(), objectPath)) {
-	                    byte[] buffer = new byte[1024];
-	                    in.read(buffer);
-	                }
-	            }, "%s should be able to read the file".formatted(clientUserName));
-	        }
-	    }
-	}
-	
 	@Test
-	void testRodsAdminWithoutProxyCannotReadSpecificUserDataObject() throws Exception {
-		// Direct connection as rods, without a pool and without a proxy user.
-		// rods does NOT have "read" permission.
-		var clientUser = new QualifiedUsername(username, "tempZone");
-		String objectPath = TEST_OBJECT;
+	void testPoolOfProxyConnectionsDoesNotAllowRodsadminToReadDataWithoutPermission() throws Exception {
+		var adminUser = new QualifiedUsername(adminUsername, zone);
 
 		try (var pool = new IRODSConnectionPool(2)) {
-			// Authentification with user (rods).
-			pool.start(host, port, clientUser, comm -> {
+			pool.start(host, port, adminUser, comm -> {
 				try {
-					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), password);
+					IRODSApi.rcAuthenticateClient(comm, new NativeAuthPlugin(), adminPassword);
+					return true;
 				} catch (Exception e) {
 					return false;
 				}
-				return true;
 			});
 
-			try (var conn = pool.getConnection()) {
-				// rods CANNOT open the replica because it does not have "read" permission.
-				// Fails with -358000 (rcReplicaOpen error).
+			try (var conn1 = pool.getConnection(); var conn2 = pool.getConnection()) {
 				var ex = assertThrows(IRODSException.class, () -> {
-					try (var in = new IRODSDataObjectInputStream(conn.getRcComm(), objectPath)) {
+					try (var in = new IRODSDataObjectInputStream(conn1.getRcComm(), clientUserDataObject)) {
 						in.read();
 					}
-				}, "rods should NOT be able to open the replica without read permission");
 
-				// Verify that the error is really a replica-open error.
-				assertTrue(
-						ex.getMessage().contains("-358000") || ex.getMessage().contains("rcReplicaOpen"),
-						"Expected replica open error, got: " + ex.getMessage()
-						);
+					try (var in = new IRODSDataObjectInputStream(conn2.getRcComm(), clientUserDataObject)) {
+						in.read();
+					}
+				});
+				assertTrue(ex.getErrorCode() < 0);
+				assertTrue(ex.getMessage().contains("rcReplicaOpen error"));
 			}
 		}
 	}
